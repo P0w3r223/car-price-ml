@@ -1,5 +1,7 @@
 # car-price-ml
 
+[![CI](https://github.com/P0w3r223/car-price-ml/actions/workflows/ci.yml/badge.svg)](https://github.com/P0w3r223/car-price-ml/actions/workflows/ci.yml)
+
 **Used-car price prediction for the Polish market** — from data, through feature
 engineering and a model bake-off, to a FastAPI prediction service.
 
@@ -32,6 +34,16 @@ Download (needs a Kaggle account/token):
 ```bash
 kaggle datasets download -d aleksandrglotov/car-prices-poland -p data/raw --unzip
 ```
+
+## Live site
+
+Mini report (bake-off, SHAP, example valuation): **<https://p0w3r223.github.io/car-price-ml/>**
+
+Notebook: [`notebooks/01_eda_and_model.ipynb`](notebooks/01_eda_and_model.ipynb).
+
+**Note.** The site is built locally from the trained model + dataset (both kept out of
+git/CI); CI runs the test suite. Regenerate the model with the download + training
+commands above.
 
 ## Project structure
 
