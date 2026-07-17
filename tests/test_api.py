@@ -3,6 +3,7 @@
 from fastapi.testclient import TestClient
 
 from api.main import _state, app
+from car_price_ml import config
 
 client = TestClient(app)
 
@@ -43,3 +44,29 @@ def test_predict_returns_price(monkeypatch):
 def test_predict_503_without_model(monkeypatch):
     monkeypatch.setitem(_state, "model", None)
     assert client.post("/predict", json=_VALID_PAYLOAD).status_code == 503
+
+
+def test_predict_rejects_unknown_fuel():
+    bad = {**_VALID_PAYLOAD, "fuel": "banana"}
+    assert client.post("/predict", json=bad).status_code == 422
+
+
+class _SpyModel:
+    def __init__(self):
+        self.seen = None
+
+    def predict(self, df):
+        self.seen = df
+        return [42000.0]
+
+
+def test_predict_builds_correct_feature_row(monkeypatch):
+    # Protects the inference contract: age is derived and columns match training.
+    spy = _SpyModel()
+    monkeypatch.setitem(_state, "model", spy)
+    assert client.post("/predict", json=_VALID_PAYLOAD).status_code == 200
+    row = spy.seen.iloc[0]
+    assert row["age"] == config.REFERENCE_YEAR - _VALID_PAYLOAD["year"]
+    assert set(spy.seen.columns) == {
+        "mark", "model", "fuel", "province", "age", "mileage", "vol_engine"
+    }
