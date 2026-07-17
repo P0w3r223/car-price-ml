@@ -59,8 +59,15 @@ docs/research/      # data + methodology
 
 ```bash
 python -m venv .venv
-.venv/Scripts/python -m pip install -r requirements.txt   # Windows
+.venv/Scripts/python -m pip install -r requirements.txt      # Windows
 pytest
+
+# download the dataset (needs a Kaggle account/token), then train the served model
+kaggle datasets download -d aleksandrglotov/car-prices-poland -p data/raw --unzip
+python -m car_price_ml.train    # bake-off + train RandomForest into models/
+
+# serve it
+uvicorn api.main:app --reload    # POST /predict   (or: docker build -t car-price-ml . && docker run -p 8000:8000 car-price-ml)
 ```
 
 ## Methodology highlights

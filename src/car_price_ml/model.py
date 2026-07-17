@@ -78,9 +78,9 @@ def cross_validate_models(
     return results
 
 
-def train(x: pd.DataFrame, y: pd.Series, name: str = "LightGBM",
+def train(x: pd.DataFrame, y: pd.Series, name: str = "RandomForest",
           random_state: int = config.RANDOM_STATE) -> TransformedTargetRegressor:
-    """Fit one model on all data (for serving)."""
+    """Fit one model on all data (for serving). Defaults to the bake-off winner."""
     model = build_models(random_state)[name]
     model.fit(x, y)
     return model

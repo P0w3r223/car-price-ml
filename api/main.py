@@ -11,24 +11,35 @@ from contextlib import asynccontextmanager
 
 import pandas as pd
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from car_price_ml import config
 from car_price_ml import model as model_module
 
 _state: dict = {"model": None}
 
+# Only years the model was actually trained on (age in [0, AGE_MAX]) — avoids silent
+# extrapolation beyond the training range.
+_MIN_YEAR = config.REFERENCE_YEAR - config.AGE_MAX
+
 
 class CarFeatures(BaseModel):
     """Validated input for a valuation request."""
 
-    mark: str = Field(examples=["opel"])
-    model: str = Field(examples=["combo"])
+    mark: str = Field(max_length=40, examples=["opel"])
+    model: str = Field(max_length=60, examples=["combo"])
     fuel: str = Field(examples=["Diesel"])
-    province: str = Field(examples=["Mazowieckie"])
-    year: int = Field(ge=1980, le=config.REFERENCE_YEAR, examples=[2015])
+    province: str = Field(max_length=60, examples=["Mazowieckie"])
+    year: int = Field(ge=_MIN_YEAR, le=config.REFERENCE_YEAR, examples=[2015])
     mileage: int = Field(ge=0, le=int(config.MILEAGE_MAX), examples=[139568])
     vol_engine: int = Field(ge=0, le=int(config.VOL_ENGINE_MAX), examples=[1248])
+
+    @field_validator("fuel")
+    @classmethod
+    def _known_fuel(cls, value: str) -> str:
+        if value not in config.KNOWN_FUELS:
+            raise ValueError(f"fuel must be one of {config.KNOWN_FUELS}")
+        return value
 
 
 class PricePrediction(BaseModel):
