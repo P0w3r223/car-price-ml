@@ -27,13 +27,13 @@
   open dataset of ~118k Polish adverts (CC0): EDA → feature engineering (log-price,
   <code>age</code>, out-of-fold target encoding) → a model bake-off → a FastAPI
   <code>/predict</code> service. Built to be defensible end-to-end.
-  <p>Example — a 2015 Opel Combo (1.2 diesel, 140k km): <strong>34,899 PLN</strong> (actual advert: 35,900 PLN).</p>
+  <p>Example — a 2015 Opel Combo (1.2 diesel, 140k km): <strong>34,883 PLN</strong> (actual advert: 35,900 PLN).</p>
 </div>
 
 <h2>Model bake-off (5-fold CV, PLN)</h2>
 <table>
   <tr><th>Model</th><th>MAE</th><th>MAPE</th><th>R²</th></tr>
-  <tr><td>RandomForest</td><td>8,616</td><td>14.3%</td><td>0.944</td></tr><tr><td>LightGBM</td><td>9,244</td><td>14.8%</td><td>0.941</td></tr><tr><td>Ridge (baseline)</td><td>15,612</td><td>23.1%</td><td>0.843</td></tr>
+  <tr><td>RandomForest</td><td>8,625</td><td>14.28%</td><td>0.9441</td></tr><tr><td>LightGBM</td><td>9,220</td><td>14.78%</td><td>0.941</td></tr><tr><td>Ridge</td><td>15,612</td><td>23.12%</td><td>0.8428</td></tr>
 </table>
 <p>Tree ensembles roughly halve the linear baseline's error — the depreciation curve is
 non-linear:</p>
@@ -52,7 +52,7 @@ the brand/model premium.</p>
 </div>
 
 <footer>
-  Generated 2026-07-17 15:19 ·
+  Generated 2026-07-17 16:03 ·
   <a href="https://github.com/P0w3r223/car-price-ml">source on GitHub</a> ·
   Data © the Kaggle dataset author (CC0-1.0)
 </footer>
