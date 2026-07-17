@@ -36,3 +36,5 @@ where = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+# Put the repo root on sys.path so tests can import the top-level `api` package.
+pythonpath = ["."]
