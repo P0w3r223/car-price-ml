@@ -17,11 +17,11 @@ from car_price_ml import model as model_module
 
 _DEFAULT_REPORT_PATH = config.PROJECT_ROOT / "reports" / "site" / "index.html"
 
-# 5-fold CV results (PLN) from the full-data bake-off — see docs/CLAUDE.md.
-_BAKEOFF = {
+# Fallback CV results (PLN) used only if the model bundle carries no cv_all metadata.
+_BAKEOFF_FALLBACK = {
     "RandomForest": {"mae": 8616, "mape": 14.3, "r2": 0.944},
     "LightGBM": {"mae": 9244, "mape": 14.8, "r2": 0.941},
-    "Ridge (baseline)": {"mae": 15612, "mape": 23.1, "r2": 0.843},
+    "Ridge": {"mae": 15612, "mape": 23.1, "r2": 0.843},
 }
 
 
@@ -32,10 +32,8 @@ def _img_tag(path: Path, alt: str) -> str:
     return f'<img src="data:image/png;base64,{b64}" alt="{alt}">'
 
 
-def _example_prediction() -> str:
-    try:
-        model = model_module.load_model()["model"]
-    except FileNotFoundError:
+def _example_prediction(model) -> str:
+    if model is None:
         return ""
     row = pd.DataFrame([{
         "mark": "opel", "model": "combo", "fuel": "Diesel", "province": "Mazowieckie",
@@ -48,16 +46,24 @@ def _example_prediction() -> str:
     )
 
 
-def _bakeoff_rows() -> str:
+def _bakeoff_rows(bakeoff: dict) -> str:
+    rows = sorted(bakeoff.items(), key=lambda kv: kv[1].get("mae", 0))
     return "".join(
-        f"<tr><td>{name}</td><td>{m['mae']:,}</td><td>{m['mape']}%</td><td>{m['r2']}</td></tr>"
-        for name, m in _BAKEOFF.items()
+        f"<tr><td>{name}</td><td>{m.get('mae', 0):,.0f}</td>"
+        f"<td>{m.get('mape', 0)}%</td><td>{m.get('r2', 0)}</td></tr>"
+        for name, m in rows
     )
 
 
 def generate_report(output_path: Path | None = None) -> Path:
     """Build the HTML mini site and write it to ``output_path``."""
     output_path = output_path or _DEFAULT_REPORT_PATH
+    try:
+        bundle = model_module.load_model()
+        loaded_model = bundle["model"]
+        bakeoff = bundle["metadata"].get("cv_all") or _BAKEOFF_FALLBACK
+    except FileNotFoundError:
+        loaded_model, bakeoff = None, _BAKEOFF_FALLBACK
     generated = datetime.now().strftime("%Y-%m-%d %H:%M")
     shap_img = _img_tag(config.FIGURES_DIR / "fig3_shap.png", "SHAP feature importance")
     depr_img = _img_tag(config.FIGURES_DIR / "fig2_depreciation.png", "Price vs age and mileage")
@@ -91,13 +97,13 @@ def generate_report(output_path: Path | None = None) -> Path:
   open dataset of ~118k Polish adverts (CC0): EDA → feature engineering (log-price,
   <code>age</code>, out-of-fold target encoding) → a model bake-off → a FastAPI
   <code>/predict</code> service. Built to be defensible end-to-end.
-  {_example_prediction()}
+  {_example_prediction(loaded_model)}
 </div>
 
 <h2>Model bake-off (5-fold CV, PLN)</h2>
 <table>
   <tr><th>Model</th><th>MAE</th><th>MAPE</th><th>R²</th></tr>
-  {_bakeoff_rows()}
+  {_bakeoff_rows(bakeoff)}
 </table>
 <p>Tree ensembles roughly halve the linear baseline's error — the depreciation curve is
 non-linear:</p>

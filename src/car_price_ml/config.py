@@ -35,6 +35,11 @@ NUMERIC_FEATURES = ("age", "mileage", "vol_engine")
 LOW_CARD_CATEGORICAL = ("fuel", "province")          # one-hot
 HIGH_CARD_CATEGORICAL = ("mark", "model")            # out-of-fold target encoding
 
+# Clean fuel domain (from the dataset) — used to validate API input so nonsense fuels
+# are rejected rather than silently priced. (province is dirty in the data, so it is
+# not constrained; unknown provinces fall back to the one-hot "unknown" bucket.)
+KNOWN_FUELS = ("CNG", "Diesel", "Electric", "Gasoline", "Hybrid", "LPG")
+
 # --- Outlier rules (domain-based; documented) --------------------------------
 PRICE_MIN = 1_000.0
 PRICE_MAX = 1_000_000.0
