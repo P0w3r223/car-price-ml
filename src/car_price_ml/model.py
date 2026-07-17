@@ -93,18 +93,20 @@ def transformed_feature_names(fitted_model: TransformedTargetRegressor) -> list[
 
 
 def shap_explanation(fitted_model: TransformedTargetRegressor, x_sample: pd.DataFrame):
-    """Return (shap_values, transformed_X, feature_names) for a tree model sample.
+    """Return ``(shap_values, transformed_X, feature_names)`` for a tree-model sample.
 
-    Uses SHAP TreeExplainer on the underlying regressor — preferred over impurity-based
-    importance, which is biased toward high-cardinality make/model.
+    SHAP TreeExplainer is preferred over impurity-based importance, which is biased toward
+    high-cardinality make/model. ``tree_path_dependent`` avoids the slow interventional
+    perturbation over a background set (much faster on random forests).
     """
     import shap
 
     prep = fitted_model.regressor_.named_steps["prep"]
     reg = fitted_model.regressor_.named_steps["reg"]
     x_trans = prep.transform(x_sample)
-    explainer = shap.TreeExplainer(reg)
-    return explainer(x_trans), x_trans, transformed_feature_names(fitted_model)
+    explainer = shap.TreeExplainer(reg, feature_perturbation="tree_path_dependent")
+    shap_values = explainer.shap_values(x_trans)
+    return shap_values, x_trans, transformed_feature_names(fitted_model)
 
 
 def save_model(model, metadata: dict | None = None, models_dir: Path = config.MODELS_DIR) -> Path:
