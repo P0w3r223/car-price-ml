@@ -50,7 +50,8 @@ is a common silent mistake.
 **LightGBM** (expected winner). Trees beat linear here because the target is irregular and
 interaction-heavy (Grinsztajn et al., NeurIPS 2022, on tabular data).
 
-**Validation & metrics.** **k-fold CV** (mean ± std), not a single split. Report **MAE**
+**Validation & metrics.** **k-fold CV** (metrics on pooled out-of-fold predictions), not a
+single split. Report **MAE**
 (primary, PLN), **RMSE**, **MAPE** (business-intuitive %), **R²** — all in **PLN** (invert
 log first).
 
