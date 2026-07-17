@@ -69,11 +69,13 @@ def cross_validate_models(
     x: pd.DataFrame, y: pd.Series, n_splits: int = config.CV_FOLDS,
     random_state: int = config.RANDOM_STATE,
 ) -> dict[str, dict[str, float]]:
-    """k-fold CV with out-of-fold PLN predictions; returns metrics per model."""
+    """k-fold CV with out-of-fold PLN predictions; returns pooled metrics per model."""
     kf = KFold(n_splits=n_splits, shuffle=True, random_state=random_state)
     results: dict[str, dict[str, float]] = {}
     for name, model in build_models(random_state).items():
-        oof_pred = cross_val_predict(model, x, y, cv=kf, n_jobs=-1)
+        # Outer CV is single-process: the estimators already parallelise internally
+        # (n_jobs=-1), so nesting n_jobs here would oversubscribe the CPUs.
+        oof_pred = cross_val_predict(model, x, y, cv=kf, n_jobs=None)
         results[name] = evaluate(y, oof_pred)
     return results
 
@@ -118,7 +120,11 @@ def save_model(model, metadata: dict | None = None, models_dir: Path = config.MO
 
 
 def load_model(models_dir: Path = config.MODELS_DIR) -> dict:
-    """Load the persisted model bundle."""
+    """Load the persisted model bundle.
+
+    Uses joblib (pickle) — only load model files you produced/trust; the served artifact
+    ships inside the Docker image, so its provenance is controlled.
+    """
     path = models_dir / MODEL_FILENAME
     if not path.exists():
         raise FileNotFoundError(f"No saved model at {path} — train first")

@@ -29,7 +29,8 @@ docs/research/  # data + methodology
 - **`age`, not raw `year`.** Derive `age = REFERENCE_YEAR - year`; raw year leaks/drifts.
 - **Out-of-fold target encoding** for make/model (high cardinality). Fitting the encoder
   on the full dataset is the #1 leakage source — do it inside CV folds / a Pipeline.
-- **k-fold cross-validation**, not a single split, for model selection (mean ± std).
+- **k-fold cross-validation**, not a single split, for model selection (pooled
+  out-of-fold predictions across folds).
 - **SHAP (TreeExplainer)** for importance, not impurity `feature_importances_` (biased
   toward high-cardinality make/model).
 - Filter outliers by **documented domain rules**; keep EVs (`vol_engine == 0`).

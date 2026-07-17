@@ -38,3 +38,7 @@ testpaths = ["tests"]
 addopts = "-q"
 # Put the repo root on sys.path so tests can import the top-level `api` package.
 pythonpath = ["."]
+filterwarnings = [
+    # FastAPI TestClient / starlette-httpx deprecation — third-party, cosmetic.
+    "ignore:Using `httpx` with `starlette.testclient`",
+]
