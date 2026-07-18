@@ -10,6 +10,8 @@ RUN pip install --no-cache-dir .
 # App code + trained model (run `python -m car_price_ml.train` to produce models/ first)
 COPY api ./api
 COPY models ./models
+# Static valuation form served by the API at the site root
+COPY docs/app ./docs/app
 
 # Run as a non-root user (least privilege)
 RUN useradd --create-home --uid 1000 appuser && chown -R appuser /app

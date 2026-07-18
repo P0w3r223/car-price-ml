@@ -3,7 +3,8 @@ data/
 notebooks/
 tests/
 reports/
-docs/
+docs/*
+!docs/app
 .git/
 __pycache__/
 *.pyc
