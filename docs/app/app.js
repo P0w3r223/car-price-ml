@@ -26,6 +26,14 @@ const pln = new Intl.NumberFormat("pl-PL", {
 
 function fillSelect(id, values) {
   const select = document.getElementById(id);
+  // A disabled, empty placeholder so nothing is pre-selected — the user must choose, and the
+  // "Pick a …" validation becomes reachable.
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Select…";
+  placeholder.disabled = true;
+  placeholder.selected = true;
+  select.appendChild(placeholder);
   for (const value of values) {
     const option = document.createElement("option");
     option.value = value;
@@ -36,14 +44,19 @@ function fillSelect(id, values) {
 
 function readForm() {
   const value = (id) => document.getElementById(id).value.trim();
+  // Empty -> NaN (not 0): a blank number field must fail validation, not silently mean "0".
+  const num = (id) => {
+    const v = value(id);
+    return v === "" ? NaN : Number(v);
+  };
   return {
     mark: value("mark"),
     model: value("model"),
     fuel: value("fuel"),
     province: value("province"),
-    year: Number(value("year")),
-    mileage: Number(value("mileage")),
-    vol_engine: Number(value("vol_engine")),
+    year: num("year"),
+    mileage: num("mileage"),
+    vol_engine: num("vol_engine"),
   };
 }
 
@@ -53,7 +66,9 @@ function validate(car) {
   const isInt = (n) => Number.isInteger(n);
 
   if (!car.mark) errors.push("Make is required.");
+  else if (car.mark.length > 40) errors.push("Make is too long (max 40 characters).");
   if (!car.model) errors.push("Model is required.");
+  else if (car.model.length > 60) errors.push("Model is too long (max 60 characters).");
   if (!CONFIG.fuels.includes(car.fuel)) errors.push("Pick a fuel type.");
   if (!car.province) errors.push("Pick a province.");
   if (!isInt(car.year) || car.year < CONFIG.yearMin || car.year > CONFIG.yearMax) {
@@ -98,7 +113,8 @@ async function predictViaApi(car) {
   }
 
   if (response.ok) {
-    const data = await response.json();
+    const data = await response.json().catch(() => null);
+    if (!data || typeof data.predicted_price_pln !== "number") return null;  // malformed -> fall back
     return { price: data.predicted_price_pln };
   }
   if (response.status === 422) {
