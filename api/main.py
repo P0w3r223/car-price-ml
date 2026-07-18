@@ -8,9 +8,11 @@ on. The model is loaded once at startup.
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import pandas as pd
 from fastapi import FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 
 from car_price_ml import config
@@ -83,3 +85,12 @@ def predict(car: CarFeatures) -> PricePrediction:
     }])
     price = float(_state["model"].predict(row)[0])
     return PricePrediction(predicted_price_pln=round(price, 2))
+
+
+# Serve the static valuation form (docs/app) at the site root — same origin as /predict, so
+# the browser needs no CORS. Located relative to this file so it resolves whether the package
+# is installed editable (local dev) or copied into the image (Docker). Mounted last so the API
+# routes above take precedence over the catch-all static mount.
+_FRONTEND_DIR = Path(__file__).resolve().parent.parent / "docs" / "app"
+if _FRONTEND_DIR.is_dir():
+    app.mount("/", StaticFiles(directory=_FRONTEND_DIR, html=True), name="frontend")
