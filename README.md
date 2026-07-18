@@ -50,8 +50,9 @@ commands above.
 ```
 src/car_price_ml/   # config, data, features, model
 notebooks/          # EDA + feature engineering
-api/                # FastAPI service
+api/                # FastAPI service (also serves the web form)
 tests/              # pytest
+docs/app/           # vanilla-JS valuation form (served by the API + on Pages)
 docs/research/      # data + methodology
 ```
 
@@ -69,6 +70,22 @@ python -m car_price_ml.train    # bake-off + train RandomForest into models/
 # serve it
 uvicorn api.main:app --reload    # POST /predict   (or: docker build -t car-price-ml . && docker run -p 8000:8000 car-price-ml)
 ```
+
+## Web frontend
+
+A dependency-free **vanilla-JavaScript** valuation form (`docs/app/`) that `fetch`es the
+`/predict` endpoint and renders the price with client-side validation and error handling.
+When the API is running it is served at the site root — same origin as `/predict`, so no
+CORS — giving **real model predictions** in the browser:
+
+```bash
+uvicorn api.main:app        # then open http://localhost:8000/
+```
+
+An interactive copy also lives on GitHub Pages:
+**<https://p0w3r223.github.io/car-price-ml/app/>**. Because the model API is not publicly
+hosted, that online demo falls back to a clearly-labelled **offline heuristic** (a rough
+estimate, *not* the trained model) — run the API locally for the real prediction.
 
 ## Methodology highlights
 
