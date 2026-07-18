@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>car-price-ml — valuation form</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<main class="wrap">
+  <h1>Used-car valuation</h1>
+  <p class="sub">
+    A vanilla-JavaScript form that calls the <code>car-price-ml</code> prediction API.
+    <a href="../index.html">&larr; back to the analysis report</a>
+  </p>
+
+  <form id="valuation" novalidate>
+    <div class="grid">
+      <label>Make
+        <input id="mark" type="text" required placeholder="opel" autocomplete="off">
+      </label>
+      <label>Model
+        <input id="model" type="text" required placeholder="combo" autocomplete="off">
+      </label>
+      <label>Fuel
+        <select id="fuel" required></select>
+      </label>
+      <label>Province
+        <select id="province" required></select>
+      </label>
+      <label>Year
+        <input id="year" type="number" inputmode="numeric" required placeholder="2015">
+      </label>
+      <label>Mileage (km)
+        <input id="mileage" type="number" inputmode="numeric" required placeholder="139568">
+      </label>
+      <label>Engine capacity (cm&sup3;)
+        <input id="vol_engine" type="number" inputmode="numeric" required placeholder="1248">
+      </label>
+    </div>
+    <button type="submit" id="submit">Estimate price</button>
+  </form>
+
+  <section id="result" class="result" aria-live="polite" hidden></section>
+
+  <footer>
+    <a href="https://github.com/P0w3r223/car-price-ml">source on GitHub</a> &middot;
+    real predictions when served by the API (<code>uvicorn api.main:app</code>)
+  </footer>
+</main>
+<script src="app.js"></script>
+</body>
+</html>
