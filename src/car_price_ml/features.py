@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import pandas as pd
 from sklearn.compose import ColumnTransformer
+from sklearn.model_selection import KFold
 from sklearn.preprocessing import OneHotEncoder, TargetEncoder
 
 from car_price_ml import config
@@ -22,17 +23,27 @@ FEATURE_COLUMNS = (
 )
 
 
-def build_preprocessor() -> ColumnTransformer:
+def build_preprocessor(random_state: int = config.RANDOM_STATE) -> ColumnTransformer:
     """Column transformer: OOF target encoding + one-hot + passthrough numerics.
 
-    ``TargetEncoder(cv=...)`` performs internal cross-fitting; pandas output preserves
-    feature names downstream (for SHAP and to satisfy LightGBM).
+    ``TargetEncoder`` performs internal cross-fitting; pandas output preserves feature
+    names downstream (for SHAP and to satisfy LightGBM).
+
+    The cross-fitting splitter is passed explicitly **with a seed**. Handing ``cv`` a
+    plain integer lets the encoder shuffle the folds from an unseeded RNG, so two fits on
+    identical data return different encodings — and every metric downstream inherits that
+    wobble even when the estimator itself is fully seeded. Measured on the full dataset,
+    the spread was tens of złoty of MAE: small, but the same order as a real model
+    improvement, which is exactly the size that misleads a comparison.
     """
     preprocessor = ColumnTransformer(
         transformers=[
             (
                 "target_enc",
-                TargetEncoder(target_type="continuous", cv=config.CV_FOLDS),
+                TargetEncoder(
+                    target_type="continuous",
+                    cv=KFold(n_splits=config.CV_FOLDS, shuffle=True, random_state=random_state),
+                ),
                 list(config.HIGH_CARD_CATEGORICAL),
             ),
             (
