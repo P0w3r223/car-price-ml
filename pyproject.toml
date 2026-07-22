@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "car-price-ml"
-version = "0.1.0"
+version = "0.1.1"
 description = "Used-car price prediction for the Polish market — EDA, model comparison, FastAPI"
 readme = "README.md"
 requires-python = ">=3.11"
