@@ -12,7 +12,9 @@ license = { text = "MIT" }
 dependencies = [
     "pandas>=2.2,<3",
     "numpy>=1.26,<3",
-    "scikit-learn>=1.5,<2",
+    # 1.9 is the floor because TargetEncoder only accepts a cross-validation splitter
+    # (and therefore a seed) for `cv` from that version; see features.build_preprocessor.
+    "scikit-learn>=1.9,<2",
     "lightgbm>=4.3,<5",
     "matplotlib>=3.9,<4",
     "seaborn>=0.13,<0.14",
