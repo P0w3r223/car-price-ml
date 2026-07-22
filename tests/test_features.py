@@ -31,6 +31,21 @@ def test_prepare_missing_columns_raises():
         features.prepare(pd.DataFrame({"mark": ["opel"]}))
 
 
+def test_preprocessor_is_reproducible():
+    """Two fits on identical data must agree exactly.
+
+    Regression guard: with an unseeded cross-fitting splitter the target encoder returned
+    different encodings run to run, which moved every downstream metric by tens of złoty
+    of MAE — enough to fake (or hide) a model improvement.
+    """
+    x, y = features.prepare(_df())
+
+    first = features.build_preprocessor().fit_transform(x, y)
+    second = features.build_preprocessor().fit_transform(x, y)
+
+    pd.testing.assert_frame_equal(first, second)
+
+
 def test_preprocessor_returns_pandas_and_keeps_rows():
     x, y = features.prepare(_df())
     out = features.build_preprocessor().fit_transform(x, y)
