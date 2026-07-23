@@ -74,11 +74,15 @@ def generate_report(output_path: Path | None = None) -> Path:
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>car-price-ml — Polish used-car price model</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  body {{ font-family: system-ui, sans-serif; max-width: 860px; margin: 2rem auto;
-         padding: 0 1rem; color: #1a1a1a; line-height: 1.5; }}
-  h1 {{ margin-bottom: 0.2rem; }}
-  .sub {{ color: #666; margin-top: 0; }}
+  body {{ font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+         -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+         max-width: 860px; margin: 2rem auto; padding: 0 1rem; color: #1c2430; line-height: 1.5; }}
+  h1 {{ margin-bottom: 0.2rem; font-weight: 700; letter-spacing: -0.01em; }}
+  .sub {{ color: #667085; margin-top: 0; }}
   .card {{ background: #f6f8fa; border-radius: 10px; padding: 1rem 1.2rem; margin: 1.2rem 0; }}
   img {{ max-width: 100%; height: auto; }}
   table {{ border-collapse: collapse; margin: 1rem 0; }}
