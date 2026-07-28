@@ -97,29 +97,29 @@ def generate_report(output_path: Path | None = None) -> Path:
 <p class="sub">Used-car price prediction for the Polish market</p>
 
 <div class="card">
-  <strong>What this is.</strong> A full ML pipeline that predicts used-car prices from an
-  open dataset of ~118k Polish adverts (CC0): EDA → feature engineering (log-price,
-  <code>age</code>, out-of-fold target encoding) → a model bake-off → a FastAPI
-  <code>/predict</code> service. Built to be defensible end-to-end.
+  <strong>Overview.</strong> A complete ML pipeline that predicts used-car prices from an
+  open dataset of approximately 118k Polish adverts (CC0): EDA → feature engineering (log-price,
+  <code>age</code>, out-of-fold target encoding) → a model comparison → a FastAPI
+  <code>/predict</code> service. The pipeline is designed to be defensible end-to-end.
   {_example_prediction(loaded_model)}
 </div>
 
-<h2>Model bake-off (5-fold CV, PLN)</h2>
+<h2>Model comparison (5-fold CV, PLN)</h2>
 <table>
   <tr><th>Model</th><th>MAE</th><th>MAPE</th><th>R²</th></tr>
   {_bakeoff_rows(bakeoff)}
 </table>
-<p>Tree ensembles roughly halve the linear baseline's error — the depreciation curve is
-non-linear:</p>
+<p>Tree ensembles reduce the linear baseline's error by approximately half; the depreciation
+curve is non-linear:</p>
 {depr_img}
 
-<h2>What drives a valuation? (SHAP)</h2>
+<h2>Valuation drivers (SHAP)</h2>
 {shap_img}
-<p>Age, model, engine size, make and mileage dominate — the model learns depreciation and
-the brand/model premium.</p>
+<p>Age, model, engine size, make and mileage are the dominant features; the model captures
+depreciation and the brand/model premium.</p>
 
 <div class="card">
-  <strong>Methodology &amp; limitations.</strong> Log-price target (inverted before
+  <strong>Methodology and limitations.</strong> Log-price target (inverted before
   metrics), <code>age</code> not raw year, out-of-fold target encoding (no leakage),
   k-fold CV, SHAP over impurity importance. Prices are ~2021–2023, so the model is
   historically biased; the dataset lacks power/gearbox. See the repo's research doc.
