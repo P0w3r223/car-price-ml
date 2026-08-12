@@ -10,7 +10,7 @@ def _df(n=40):
     return pd.DataFrame({
         "mark": ["opel", "bmw"] * (n // 2),
         "model": ["combo", "x5"] * (n // 2),
-        "fuel": ["Diesel", "Petrol"] * (n // 2),
+        "fuel": ["Diesel", "Gasoline"] * (n // 2),
         "province": ["Mazowieckie", "Śląskie"] * (n // 2),
         "age": list(range(1, n + 1)),
         "mileage": [100000 + i * 1000 for i in range(n)],
@@ -44,6 +44,40 @@ def test_preprocessor_is_reproducible():
     second = features.build_preprocessor().fit_transform(x, y)
 
     pd.testing.assert_frame_equal(first, second)
+
+
+def test_onehot_columns_cover_the_declared_domain():
+    """The feature space is the declared vocabulary, not whatever the sample contained.
+
+    A training frame holding one province must still produce a column per province —
+    otherwise a fold (or the final fit) would define a narrower feature space than the API
+    later feeds it.
+    """
+    df = _df()
+    df["province"] = "Mazowieckie"
+    x, y = features.prepare(df)
+
+    out = features.build_preprocessor().fit_transform(x, y)
+
+    for province in config.PROVINCES:
+        assert any(c.endswith(f"province_{province}") for c in out.columns), province
+    for fuel in config.KNOWN_FUELS:
+        assert any(c.endswith(f"fuel_{fuel}") for c in out.columns), fuel
+
+
+def test_preprocessor_refuses_an_out_of_domain_category():
+    """An unknown category must raise, not become an all-zero block.
+
+    Under `handle_unknown="ignore"` this row would have been priced with no fuel type at
+    all, returned as a confident number — the failure mode that motivated declaring the
+    domains in the first place.
+    """
+    df = _df()
+    df.loc[0, "fuel"] = "Petrol"  # a real spelling from another dataset
+    x, y = features.prepare(df)
+
+    with pytest.raises(ValueError, match="Found unknown categories"):
+        features.build_preprocessor().fit_transform(x, y)
 
 
 def test_preprocessor_returns_pandas_and_keeps_rows():
