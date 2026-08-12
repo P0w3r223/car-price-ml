@@ -20,10 +20,14 @@
   <form id="valuation" novalidate>
     <div class="grid">
       <label>Make
-        <input id="mark" type="text" required placeholder="opel" autocomplete="off">
+        <input id="mark" type="text" required placeholder="opel" autocomplete="off"
+               list="mark-options">
+        <datalist id="mark-options"></datalist>
       </label>
       <label>Model
-        <input id="model" type="text" required placeholder="combo" autocomplete="off">
+        <input id="model" type="text" required placeholder="combo" autocomplete="off"
+               list="model-options">
+        <datalist id="model-options"></datalist>
       </label>
       <label>Fuel
         <select id="fuel" required></select>

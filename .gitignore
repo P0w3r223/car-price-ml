@@ -34,3 +34,8 @@ Thumbs.db
 .codegraph/
 # Added by code-review-graph
 .code-review-graph/
+
+# Packaging output. `pip install .` leaves a full copy of the package here; committing it
+# would ship a stale mirror of the source alongside the real one.
+build/
+dist/
