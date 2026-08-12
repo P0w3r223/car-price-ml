@@ -17,12 +17,10 @@ from car_price_ml import model as model_module
 
 _DEFAULT_REPORT_PATH = config.PROJECT_ROOT / "reports" / "site" / "index.html"
 
-# Fallback CV results (PLN) used only if the model bundle carries no cv_all metadata.
-_BAKEOFF_FALLBACK = {
-    "RandomForest": {"mae": 8616, "mape": 14.3, "r2": 0.944},
-    "LightGBM": {"mae": 9244, "mape": 14.8, "r2": 0.941},
-    "Ridge": {"mae": 15612, "mape": 23.1, "r2": 0.843},
-}
+# There is deliberately no fallback metrics table. The previous one held the pre-deduplication
+# numbers, so an artifact missing its metadata produced a page showing better-than-real
+# accuracy, rendered identically to a genuine one. A page that says "unavailable" is worth
+# more than a page that quietly makes the model look good.
 
 
 def _img_tag(path: Path, alt: str) -> str:
@@ -46,13 +44,29 @@ def _example_prediction(model) -> str:
     )
 
 
-def _bakeoff_rows(bakeoff: dict) -> str:
-    rows = sorted(bakeoff.items(), key=lambda kv: kv[1].get("mae", 0))
-    return "".join(
-        f"<tr><td>{name}</td><td>{m.get('mae', 0):,.0f}</td>"
-        f"<td>{m.get('mape', 0)}%</td><td>{m.get('r2', 0)}</td></tr>"
+def _bakeoff_table(bakeoff: dict | None) -> str:
+    """The model comparison, or an honest gap where it would be."""
+    if not bakeoff:
+        return ("<p><em>Metrics unavailable — the model artifact carries no cross-validation "
+                "metadata. Retrain to populate this table.</em></p>")
+    # Missing MAE sorts last, not first: an absent metric must never look like the winner.
+    rows = sorted(bakeoff.items(), key=lambda kv: kv[1].get("mae", float("inf")))
+    body = "".join(
+        f"<tr><td>{name}</td><td>{_mae_cell(m)}</td>"
+        f"<td>{m.get('mape', '—')}%</td><td>{m.get('r2', '—')}</td></tr>"
         for name, m in rows
     )
+    return ("<table><tr><th>Model</th><th>MAE</th><th>MAPE</th><th>R²</th></tr>"
+            f"{body}</table>")
+
+
+def _mae_cell(metrics: dict) -> str:
+    """MAE with its fold-to-fold spread, so the ranking carries an error bar."""
+    mae = metrics.get("mae")
+    if mae is None:
+        return "—"
+    spread = metrics.get("mae_fold_std")
+    return f"{mae:,.0f} ± {spread:,.0f}" if spread else f"{mae:,.0f}"
 
 
 def generate_report(output_path: Path | None = None) -> Path:
@@ -61,9 +75,14 @@ def generate_report(output_path: Path | None = None) -> Path:
     try:
         bundle = model_module.load_model()
         loaded_model = bundle["model"]
-        bakeoff = bundle["metadata"].get("cv_all") or _BAKEOFF_FALLBACK
-    except FileNotFoundError:
-        loaded_model, bakeoff = None, _BAKEOFF_FALLBACK
+        bakeoff = bundle["metadata"].get("cv_all")
+        n_train = bundle["metadata"].get("n_train")
+    except (FileNotFoundError, ValueError):
+        loaded_model, bakeoff, n_train = None, None, None
+    # Read from the artifact rather than hardcoded: the cleaning rules (deduplication,
+    # out-of-domain geography, missing displacement) move this number, and a stale count in
+    # the report is the kind of small dishonesty that costs credibility.
+    trained_on = f"{n_train:,} cleaned Polish adverts" if n_train else "cleaned Polish adverts"
     generated = datetime.now().strftime("%Y-%m-%d %H:%M")
     shap_img = _img_tag(config.FIGURES_DIR / "fig3_shap.png", "SHAP feature importance")
     depr_img = _img_tag(config.FIGURES_DIR / "fig2_depreciation.png", "Price vs age and mileage")
@@ -97,18 +116,17 @@ def generate_report(output_path: Path | None = None) -> Path:
 <p class="sub">Used-car price prediction for the Polish market</p>
 
 <div class="card">
-  <strong>Overview.</strong> A complete ML pipeline that predicts used-car prices from an
-  open dataset of approximately 118k Polish adverts (CC0): EDA → feature engineering (log-price,
+  <strong>Overview.</strong> A complete ML pipeline that predicts used-car prices, trained on
+  {trained_on} from an open dataset (CC0): EDA → feature engineering (log-price,
   <code>age</code>, out-of-fold target encoding) → a model comparison → a FastAPI
   <code>/predict</code> service. The pipeline is designed to be defensible end-to-end.
   {_example_prediction(loaded_model)}
 </div>
 
 <h2>Model comparison (5-fold CV, PLN)</h2>
-<table>
-  <tr><th>Model</th><th>MAE</th><th>MAPE</th><th>R²</th></tr>
-  {_bakeoff_rows(bakeoff)}
-</table>
+{_bakeoff_table(bakeoff)}
+<p class="sub">MAE is shown with its fold-to-fold standard deviation: a gap smaller than the
+spread is not evidence of a better model.</p>
 <p>Tree ensembles reduce the linear baseline's error by approximately half; the depreciation
 curve is non-linear:</p>
 {depr_img}
@@ -121,8 +139,9 @@ depreciation and the brand/model premium.</p>
 <div class="card">
   <strong>Methodology and limitations.</strong> Log-price target (inverted before
   metrics), <code>age</code> not raw year, out-of-fold target encoding (no leakage),
-  k-fold CV, SHAP over impurity importance. Prices are ~2021–2023, so the model is
-  historically biased; the dataset lacks power/gearbox. See the repo's research doc.
+  k-fold CV, SHAP over impurity importance. The data is a single January 2022 snapshot, so
+  every valuation is a January 2022 valuation and is labelled as one rather than rescaled to
+  today; the dataset lacks power/gearbox. See the repo's research docs.
 </div>
 
 <footer>
