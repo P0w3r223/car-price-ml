@@ -10,6 +10,9 @@ RUN pip install --no-cache-dir .
 # App code + trained model (run `python -m car_price_ml.train` to produce models/ first)
 COPY api ./api
 COPY models ./models
+# The package is installed non-editable, so its own PROJECT_ROOT resolves into site-packages
+# rather than /app — the artifact location has to be stated, not inferred.
+ENV CAR_PRICE_MODELS_DIR=/app/models
 # Static valuation form served by the API at the site root
 COPY docs/app ./docs/app
 

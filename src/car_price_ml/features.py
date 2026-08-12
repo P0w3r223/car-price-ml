@@ -22,6 +22,13 @@ FEATURE_COLUMNS = (
     *config.NUMERIC_FEATURES,       # age, mileage, vol_engine
 )
 
+# Declared domains for the one-hot columns, keyed by feature name so the lists cannot drift
+# out of alignment with LOW_CARD_CATEGORICAL's order.
+_ONEHOT_CATEGORIES = {
+    "fuel": list(config.KNOWN_FUELS),
+    "province": list(config.PROVINCES),
+}
+
 
 def build_preprocessor(random_state: int = config.RANDOM_STATE) -> ColumnTransformer:
     """Column transformer: OOF target encoding + one-hot + passthrough numerics.
@@ -48,7 +55,27 @@ def build_preprocessor(random_state: int = config.RANDOM_STATE) -> ColumnTransfo
             ),
             (
                 "onehot",
-                OneHotEncoder(handle_unknown="ignore", sparse_output=False),
+                # The category domains are declared, not learned. Learned domains depend on
+                # what a given training sample happened to contain, so a fold missing a rare
+                # fuel would produce a different feature space — and the serving pipeline
+                # would inherit whichever one the final fit saw. Declaring them keeps the
+                # columns identical across folds, runs and the API.
+                #
+                # "error", not "ignore": an out-of-domain category under "ignore" becomes an
+                # all-zero block — a combination that occurs in no training row, so the trees
+                # extrapolate off-manifold and return a confident number with no signal that
+                # anything was dropped. That is the exact failure this vocabulary work exists
+                # to close, and it must not stay open for the next dataset that spells a fuel
+                # differently. Callers reach the model through `data.clean` (which closes the
+                # province domain) or the API (which validates both), so a raised error here
+                # means genuinely unseen input, not routine traffic.
+                OneHotEncoder(
+                    categories=[
+                        _ONEHOT_CATEGORIES[name] for name in config.LOW_CARD_CATEGORICAL
+                    ],
+                    handle_unknown="error",
+                    sparse_output=False,
+                ),
                 list(config.LOW_CARD_CATEGORICAL),
             ),
             ("num", "passthrough", list(config.NUMERIC_FEATURES)),

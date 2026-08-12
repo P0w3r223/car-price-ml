@@ -17,7 +17,11 @@ engineering and a model bake-off, to a FastAPI prediction service.
    high-cardinality make/model, one-hot for low-cardinality categoricals; **log-price**
    target (right-skewed).
 3. **Models** — a bake-off: linear/Ridge baseline vs. RandomForest vs. LightGBM, with
-   **k-fold cross-validation** and metrics reported in PLN.
+   **k-fold cross-validation** and metrics reported in PLN — each with its fold-to-fold
+   spread, because a gap smaller than the spread is not a better model. The winner is
+   selected by the measurement, not hardcoded, and LightGBM's hyperparameters come from a
+   published size↔quality curve: 8 612 PLN MAE in a 14 MB artifact, against RandomForest's
+   8 798 in 590 MB.
 4. **Interpretability** — SHAP (TreeExplainer) to explain what drives a valuation.
 5. **Serve** — a FastAPI `/predict` endpoint (+ Docker) loading the saved best model.
 
@@ -26,7 +30,9 @@ engineering and a model bake-off, to a FastAPI prediction service.
 [Car Prices Poland](https://www.kaggle.com/datasets/aleksandrglotov/car-prices-poland)
 (aleksandrglotov, Kaggle) — license **CC0-1.0**. An open, published dataset (no scraping):
 `mark`, `model`, `year`, `mileage`, `vol_engine`, `fuel`, `city`, `province`, `price`.
-Prices are ~2021–2023, so the model is historically biased (documented). See
+The source is a **single January 2022 snapshot** (confirmed by Kaggle's metadata and by the
+model-year distribution: 2021 is 9 % of rows, 2022 is 1.8 %, nothing follows), so valuations
+are historical and dated as such rather than presented as current. See
 [`docs/research/data-and-methodology.md`](docs/research/data-and-methodology.md).
 
 Download (needs a Kaggle account/token):
@@ -65,7 +71,7 @@ pytest
 
 # download the dataset (needs a Kaggle account/token), then train the served model
 kaggle datasets download -d aleksandrglotov/car-prices-poland -p data/raw --unzip
-python -m car_price_ml.train    # bake-off + train RandomForest into models/
+python -m car_price_ml.train    # bake-off, then train + save whichever model won it
 
 # serve it
 uvicorn api.main:app --reload    # POST /predict   (or: docker build -t car-price-ml . && docker run -p 8000:8000 car-price-ml)
@@ -75,6 +81,10 @@ uvicorn api.main:app --reload    # POST /predict   (or: docker build -t car-pric
 
 A dependency-free **vanilla-JavaScript** valuation form (`docs/app/`) that `fetch`es the
 `/predict` endpoint and renders the price with client-side validation and error handling.
+`fuel` and `province` are **closed vocabularies**: the service normalises spelling and
+casing but answers anything outside the domain with a `422`, rather than pricing the car
+from an all-zero category block. A test asserts the form's lists and `config.py` hold
+identical strings.
 When the API is running it is served at the site root — same origin as `/predict`, so no
 CORS — giving **real model predictions** in the browser:
 
