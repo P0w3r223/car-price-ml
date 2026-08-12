@@ -25,7 +25,12 @@ otomoto.pl — cover almost every feature we need.
 
 **Decision:** start with *Car Prices Poland* (clean, benchmarkable). Cite the author +
 license in the README. **Verify the exact Kaggle license on the dataset page before
-publishing.** Prices are from ~2021–2023 — the model is historically biased; document it.
+publishing.** Prices come from a **single January 2022 scrape** — corrected 2026-08-12; this
+document previously said "~2021–2023", which the model-year distribution contradicts (2021 is
+9 % of rows, 2022 is 1.8 %, and nothing follows). The model is historical; see
+[price-data-sources.md](price-data-sources.md) and
+[temporal-recalibration.md](temporal-recalibration.md) for why it is dated rather than
+rescaled to today.
 
 ## Methodology (the load-bearing part)
 
@@ -45,6 +50,11 @@ is a common silent mistake.
 - Low-cardinality categoricals (fuel, gearbox, body) → one-hot.
 - **Outliers:** drop implausible rows by domain rules (price≈0, mileage in millions,
   age > ~40) — document every rule.
+- **Geography is a closed vocabulary.** `province` is normalised onto the 16 Polish
+  provinces (case, diacritics and separators folded); the ~44 adverts from outside Poland
+  (Berlin, Wiedeń, Moravian-Silesian Region, …) are dropped as out-of-domain. `fuel` is
+  likewise closed. Both one-hot domains are declared rather than learned, and an unknown
+  category raises instead of becoming an all-zero block — see ADR 0001.
 
 **Models (bake-off).** Linear/Ridge on log-price (honest baseline) → RandomForest →
 **LightGBM** (expected winner). Trees beat linear here because the target is irregular and
