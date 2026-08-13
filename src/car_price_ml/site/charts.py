@@ -41,7 +41,9 @@ class SpreadBar:
 
     label: str
     value: float
-    spread: float
+    # Optional in the type only. A missing spread is not a chart with one bar undrawn — it
+    # stops the build, below.
+    spread: float | None
     note: str  # e.g. the artifact size — the other half of the decision
     served: bool = False
 
@@ -82,11 +84,11 @@ def _svg(width: int, height: int, title: str, body: str) -> str:
 def bakeoff_chart(bars: list[SpreadBar], title: str = "Cross-validated error by model") -> str:
     """Pooled out-of-fold MAE per model, each with its fold-to-fold spread.
 
-    The spread is drawn as a whisker on the bar end rather than printed only in text,
-    because the comparison this chart exists to support turns on whether two bars differ by
-    more than their own wobble. Read as bars alone, LightGBM's 186 PLN lead over
-    RandomForest looks like a result; read with the whiskers, it is inside the noise — which
-    is why the served model is argued from the 42× size difference instead.
+    The spread is drawn as a whisker on the bar end rather than printed only in text, because
+    the comparison this chart exists to support turns on whether two bars differ by more than
+    their own wobble — and bars alone always look decisive. Whether they do differ is a
+    question for the data, so the sentence beside the chart is derived from it
+    (``build._accuracy_verdict``) rather than written here.
     """
     if not bars:
         return '<p class="empty">No cross-validation metrics in the artifact.</p>'
@@ -112,8 +114,15 @@ def bakeoff_chart(bars: list[SpreadBar], title: str = "Cross-validated error by 
             f'text-anchor="end">{_text(bar.label)}</text>'
             f'<rect class="{classes}" x="{_LABEL_WIDTH}" y="{y + 5}" '
             f'width="{end - _LABEL_WIDTH:.1f}" height="{_ROW_HEIGHT - 14}" rx="2"></rect>'
+            # End caps, not a bare line. At this scale ±72 PLN is under four pixels, most of
+            # it hidden under the bar it sits on — a reader told to read the whiskers before
+            # the ranking could not see them at all.
             f'<line class="spread" x1="{x_of(bar.value - bar.spread):.1f}" '
             f'x2="{x_of(bar.value + bar.spread):.1f}" y1="{mid}" y2="{mid}"></line>'
+            f'<line class="spread-cap" x1="{x_of(bar.value - bar.spread):.1f}" '
+            f'x2="{x_of(bar.value - bar.spread):.1f}" y1="{mid - 5}" y2="{mid + 5}"></line>'
+            f'<line class="spread-cap" x1="{x_of(bar.value + bar.spread):.1f}" '
+            f'x2="{x_of(bar.value + bar.spread):.1f}" y1="{mid - 5}" y2="{mid + 5}"></line>'
             f'<text class="bar-value" x="{x_of(bar.value + bar.spread) + 8:.1f}" '
             f'y="{mid + 4}">{_thousands(bar.value)} ± {_thousands(bar.spread)}'
             f" · {_text(bar.note)}</text>"

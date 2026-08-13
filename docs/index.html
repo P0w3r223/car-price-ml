@@ -142,9 +142,12 @@ p { margin: 0.5rem 0; }
 figure { margin: 1rem 0 0; }
 figcaption { color: var(--muted); font-size: 0.85rem; margin-top: 0.35rem; }
 
-/* Charts scroll inside their own box; the page itself never scrolls sideways. */
+/* Charts scroll inside their own box; the page itself never scrolls sideways. The min-width
+   is what makes that true: with `max-width: 100%` alone an SVG with a viewBox simply scales
+   down, so `overflow-x` never fires and a 720 px chart renders at 44 % on a phone — taking
+   11 px labels to under 5 px. Below this width the box scrolls instead of shrinking. */
 .chart-wrap { overflow-x: auto; }
-.chart { max-width: 100%; height: auto; display: block; }
+.chart { min-width: 34rem; max-width: 100%; height: auto; display: block; }
 .chart text { font-size: 11px; fill: var(--text); }
 .chart .bar-label { fill: var(--text); }
 .chart .bar-value, .chart .axis { fill: var(--muted); font-size: 10.5px; }
@@ -153,6 +156,7 @@ figcaption { color: var(--muted); font-size: 0.85rem; margin-top: 0.35rem; }
 /* The fold-to-fold spread, drawn across the bar end. Deliberately the text colour rather
    than the bar's: it is a statement about the bar, not a part of it. */
 .chart .spread { stroke: var(--text); stroke-width: 2; opacity: 0.8; }
+.chart .spread-cap { stroke: var(--text); stroke-width: 1.5; opacity: 0.8; }
 .chart .series {
   fill: none;
   stroke: var(--accent);
@@ -309,20 +313,14 @@ footer {
 
 <h2>Which model, and by how much</h2>
 <figure>
-  <div class="chart-wrap"><svg class="chart" viewBox="0 0 720 114" width="720" height="114" role="img" aria-label="Cross-validated error by model (PLN)" xmlns="http://www.w3.org/2000/svg"><title>Cross-validated error by model (PLN)</title><text class="bar-label" x="122" y="28.0" text-anchor="end">LightGBM</text><rect class="bar served" x="130" y="17" width="219.0" height="16" rx="2"></rect><line class="spread" x1="347.2" x2="350.9" y1="24.0" y2="24.0"></line><text class="bar-value" x="358.9" y="28.0">8 612 ± 72 · 13.9 MB</text><text class="bar-label" x="122" y="58.0" text-anchor="end">RandomForest</text><rect class="bar" x="130" y="47" width="223.8" height="16" rx="2"></rect><line class="spread" x1="351.7" x2="355.8" y1="54.0" y2="54.0"></line><text class="bar-value" x="363.8" y="58.0">8 798 ± 81 · 590 MB</text><text class="bar-label" x="122" y="88.0" text-anchor="end">Ridge</text><rect class="bar" x="130" y="77" width="378.7" height="16" rx="2"></rect><line class="spread" x1="507.4" x2="510.0" y1="84.0" y2="84.0"></line><text class="bar-value" x="518.0" y="88.0">14 889 ± 51 · —</text></svg></div>
+  <div class="chart-wrap"><svg class="chart" viewBox="0 0 720 114" width="720" height="114" role="img" aria-label="Cross-validated error by model (PLN)" xmlns="http://www.w3.org/2000/svg"><title>Cross-validated error by model (PLN)</title><text class="bar-label" x="122" y="28.0" text-anchor="end">LightGBM</text><rect class="bar served" x="130" y="17" width="219.0" height="16" rx="2"></rect><line class="spread" x1="347.2" x2="350.9" y1="24.0" y2="24.0"></line><line class="spread-cap" x1="347.2" x2="347.2" y1="19.0" y2="29.0"></line><line class="spread-cap" x1="350.9" x2="350.9" y1="19.0" y2="29.0"></line><text class="bar-value" x="358.9" y="28.0">8 612 ± 72 · 13.9 MB</text><text class="bar-label" x="122" y="58.0" text-anchor="end">RandomForest</text><rect class="bar" x="130" y="47" width="223.8" height="16" rx="2"></rect><line class="spread" x1="351.7" x2="355.8" y1="54.0" y2="54.0"></line><line class="spread-cap" x1="351.7" x2="351.7" y1="49.0" y2="59.0"></line><line class="spread-cap" x1="355.8" x2="355.8" y1="49.0" y2="59.0"></line><text class="bar-value" x="363.8" y="58.0">8 798 ± 81 · 590 MB</text><text class="bar-label" x="122" y="88.0" text-anchor="end">Ridge</text><rect class="bar" x="130" y="77" width="378.7" height="16" rx="2"></rect><line class="spread" x1="507.4" x2="510.0" y1="84.0" y2="84.0"></line><line class="spread-cap" x1="507.4" x2="507.4" y1="79.0" y2="89.0"></line><line class="spread-cap" x1="510.0" x2="510.0" y1="79.0" y2="89.0"></line><text class="bar-value" x="518.0" y="88.0">14 889 ± 51 · —</text></svg></div>
   <figcaption>
     Pooled out-of-fold MAE over 5-fold cross-validation, in PLN, with
     the fold-to-fold spread as a whisker and the artifact size beside it.
     <strong>n = 111 018</strong> adverts.
   </figcaption>
 </figure>
-<p>
-  LightGBM wins the comparison, but read the whiskers before reading the ranking: its
-  lead is inside the fold-to-fold spread, so on accuracy alone this is a tie. The decision
-  rests on the other column. Choosing the best of sixteen configurations on the same
-  cross-validation also makes the winner's score slightly optimistic — a size difference
-  is not subject to that, and a 186 PLN accuracy margin is.
-</p>
+<p>The 186 PLN lead over RandomForest clears the folds&#39; combined spread (108 PLN), so the ranking is not fold noise. It is still the best of sixteen configurations scored on the same cross-validation, which makes the winner&#39;s own score a little optimistic — so the decision to serve it rests on the size difference, which selection noise cannot touch.</p>
 
 <h2>What moves a valuation</h2>
 <figure>
@@ -573,9 +571,9 @@ footer {
 <footer>
   <p>
     Built from the LightGBM artifact trained
-    <time datetime="2026-08-12">2026-08-12</time> on
+    <time datetime="2026-08-13">2026-08-13</time> on
     111 018 adverts, commit
-    <code>13e93dc</code> ·
+    <code>b339d05</code> ·
     <a href="data/metrics.json">the aggregates this page renders</a> ·
     <a href="https://github.com/P0w3r223/car-price-ml">source on GitHub</a>
   </p>

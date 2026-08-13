@@ -30,7 +30,7 @@
   "artifact_bytes": {
     "Ridge": null,
     "RandomForest": 590000000,
-    "LightGBM": 13874240
+    "LightGBM": 13874266
   },
   "vocabulary_sizes": {
     "mark": 23,
@@ -38,6 +38,6 @@
     "fuel": 6,
     "province": 16
   },
-  "trained_on": "2026-08-12",
-  "commit": "13e93dc"
+  "trained_on": "2026-08-13",
+  "commit": "b339d05"
 }

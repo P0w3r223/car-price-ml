@@ -43,21 +43,26 @@ kaggle datasets download -d aleksandrglotov/car-prices-poland -p data/raw --unzi
 
 ## Live site
 
-Mini report (bake-off, SHAP, example valuation): **<https://p0w3r223.github.io/car-price-ml/>**
+**<https://p0w3r223.github.io/car-price-ml/>** — what the model refuses to price (measured by
+running the pipeline with its guards removed), the bake-off with its fold spreads, the SHAP
+drivers, and the cleaning and contract rules quoted verbatim from the modules they live in.
 
 Notebook: [`notebooks/01_eda_and_model.ipynb`](notebooks/01_eda_and_model.ipynb).
 
-**Note.** The site is built locally from the trained model + dataset (both kept out of
-git/CI); CI runs the test suite. Regenerate the model with the download + training
-commands above.
+**Note.** The page is rendered from `docs/data/*.json`, which are committed; producing those
+needs the trained model + dataset (both kept out of git/CI), so `python -m
+car_price_ml.site.export` runs locally. CI runs the test suite **and** rebuilds the page,
+failing if it no longer matches its inputs.
 
 ## Project structure
 
 ```
 src/car_price_ml/   # config, data, features, model
+src/car_price_ml/site/  # export the page's numbers, then render the page from them
 notebooks/          # EDA + feature engineering
 api/                # FastAPI service (also serves the web form)
 tests/              # pytest
+docs/data/          # the committed aggregates the published page renders from
 docs/app/           # vanilla-JS valuation form (served by the API + on Pages)
 docs/research/      # data + methodology
 ```
@@ -75,6 +80,10 @@ python -m car_price_ml.train    # bake-off, then train + save whichever model wo
 
 # serve it
 uvicorn api.main:app --reload    # POST /predict   (or: docker build -t car-price-ml . && docker run -p 8000:8000 car-price-ml)
+
+# republish the site: measure, then render (the `[site]` extra installs Jinja2)
+python -m car_price_ml.site.export
+python -m car_price_ml.site.build
 ```
 
 ## Web frontend

@@ -128,9 +128,12 @@ p { margin: 0.5rem 0; }
 figure { margin: 1rem 0 0; }
 figcaption { color: var(--muted); font-size: 0.85rem; margin-top: 0.35rem; }
 
-/* Charts scroll inside their own box; the page itself never scrolls sideways. */
+/* Charts scroll inside their own box; the page itself never scrolls sideways. The min-width
+   is what makes that true: with `max-width: 100%` alone an SVG with a viewBox simply scales
+   down, so `overflow-x` never fires and a 720 px chart renders at 44 % on a phone — taking
+   11 px labels to under 5 px. Below this width the box scrolls instead of shrinking. */
 .chart-wrap { overflow-x: auto; }
-.chart { max-width: 100%; height: auto; display: block; }
+.chart { min-width: 34rem; max-width: 100%; height: auto; display: block; }
 .chart text { font-size: 11px; fill: var(--text); }
 .chart .bar-label { fill: var(--text); }
 .chart .bar-value, .chart .axis { fill: var(--muted); font-size: 10.5px; }
@@ -139,6 +142,7 @@ figcaption { color: var(--muted); font-size: 0.85rem; margin-top: 0.35rem; }
 /* The fold-to-fold spread, drawn across the bar end. Deliberately the text colour rather
    than the bar's: it is a statement about the bar, not a part of it. */
 .chart .spread { stroke: var(--text); stroke-width: 2; opacity: 0.8; }
+.chart .spread-cap { stroke: var(--text); stroke-width: 1.5; opacity: 0.8; }
 .chart .series {
   fill: none;
   stroke: var(--accent);

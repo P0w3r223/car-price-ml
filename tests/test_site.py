@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 
+import pandas as pd
 import pytest
 from markupsafe import escape
 
@@ -70,6 +71,42 @@ def test_headline_makes_no_size_claim_about_an_unweighed_model():
     ))
     assert "—" not in head["claim"]
     assert "Ridge" not in head["claim"]
+
+
+# --- the verdict about the ranking is decided from the numbers ---------------------------
+
+def _scored(mae: float, spread: float) -> dict:
+    return {"mae": mae, "mae_fold_std": spread}
+
+
+def test_a_lead_inside_the_combined_spread_is_called_a_tie():
+    verdict = build._accuracy_verdict(_metrics(
+        "LightGBM",
+        {"LightGBM": _scored(8_612.2, 71.5), "RandomForest": _scored(8_650.0, 80.7)},
+        {},
+    ))
+    assert "tie" in verdict
+
+
+def test_a_lead_clearing_the_combined_spread_is_not_called_a_tie():
+    """The committed numbers land here, and the paragraph this replaced said the opposite:
+    a 186 PLN gap against spreads of 72 and 81 clears their quadrature sum of 108."""
+    verdict = build._accuracy_verdict(_metrics(
+        "LightGBM",
+        {"LightGBM": _scored(8_612.2, 71.5), "RandomForest": _scored(8_798.3, 80.7)},
+        {},
+    ))
+    assert "tie" not in verdict
+    assert "186" in verdict and "108" in verdict
+
+
+def test_the_verdict_says_so_when_the_served_model_lost_its_own_bakeoff():
+    verdict = build._accuracy_verdict(_metrics(
+        "RandomForest",
+        {"LightGBM": _scored(8_612.2, 71.5), "RandomForest": _scored(8_798.3, 80.7)},
+        {},
+    ))
+    assert "did not win" in verdict
 
 
 # --- a number without its uncertainty is not publishable ---------------------------------
@@ -148,6 +185,34 @@ def test_the_written_page_uses_lf(tmp_path):
 def test_building_without_the_aggregates_names_the_command_that_makes_them(tmp_path):
     with pytest.raises(build.MissingAggregate, match="site.export"):
         build.render(data_dir=tmp_path)
+
+
+def test_an_aggregate_from_another_schema_is_refused_rather_than_partly_rendered(tmp_path):
+    (tmp_path / "metrics.json").write_text(json.dumps({"schema": 99}), encoding="utf-8")
+    with pytest.raises(build.StaleAggregate, match="site.export"):
+        build.render(data_dir=tmp_path)
+
+
+# --- the page states facts about the served model, so it must read them from it -----------
+
+def test_export_refuses_an_artifact_that_cannot_date_itself():
+    with pytest.raises(export.ExportError, match="trained_at"):
+        export._require_stamps({"n_train": 111_018})
+
+
+def test_export_refuses_an_artifact_that_does_not_know_its_row_count():
+    with pytest.raises(export.ExportError, match="n_train"):
+        export._require_stamps({"trained_at": "2026-08-13"})
+
+
+def test_the_depreciation_curve_refuses_to_bridge_a_dropped_bucket():
+    """A line through a bucket that was too thin to plot would look like measured data."""
+    frame = pd.DataFrame({
+        "age": [1] * 200 + [2] * 5 + [3] * 200,
+        config.TARGET: [50_000.0] * 200 + [40_000.0] * 5 + [30_000.0] * 200,
+    })
+    with pytest.raises(export.ExportError, match=r"\[2\]"):
+        export._depreciation(frame)
 
 
 # --- the export refuses to publish a stale size claim -------------------------------------

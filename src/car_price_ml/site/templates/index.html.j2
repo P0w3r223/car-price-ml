@@ -91,13 +91,7 @@
     <strong>n = {{ thousands(metrics.n_train) }}</strong> adverts.
   </figcaption>
 </figure>
-<p>
-  {{ served }} wins the comparison, but read the whiskers before reading the ranking: its
-  lead is inside the fold-to-fold spread, so on accuracy alone this is a tie. The decision
-  rests on the other column. Choosing the best of sixteen configurations on the same
-  cross-validation also makes the winner's score slightly optimistic — a size difference
-  is not subject to that, and a 186 PLN accuracy margin is.
-</p>
+<p>{{ accuracy_verdict }}</p>
 
 <h2>What moves a valuation</h2>
 <figure>
