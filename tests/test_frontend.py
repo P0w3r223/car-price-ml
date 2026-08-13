@@ -114,6 +114,33 @@ def test_the_form_keeps_no_copy_of_the_numeric_bounds():
     )
 
 
+def test_the_form_reads_the_schema_the_generator_writes():
+    """The last constant spelled in both languages, and the one no other guard catches.
+
+    Bumped on the Python side alone, everything stays green — the generated file and the
+    payload it is compared against both move — while the deployed form refuses to run for
+    every visitor because it is still reading the previous schema.
+    """
+    declared = re.search(r"const CONFIG_SCHEMA = (\d+);", APP_JS_CODE)
+    assert declared, "app.js no longer declares CONFIG_SCHEMA"
+    assert int(declared.group(1)) == form.FORM_CONFIG_SCHEMA
+
+
+def test_the_offline_heuristic_knows_every_fuel_the_form_offers():
+    """Its factor table is the one fuel-name copy left, and its miss would be silent.
+
+    ``fuelFactor[car.fuel] ?? 1.0`` prices an unlisted fuel as petrol. The number is labelled
+    an estimate wherever it appears, so the blast radius is small — but a domain value
+    falling through to a default is the shape of bug this project keeps finding, and here it
+    costs one test to make the fallback unreachable instead of load-bearing.
+    """
+    table = re.search(r"const fuelFactor = \{(.*?)\};", APP_JS_CODE, re.DOTALL)
+    assert table, "app.js no longer declares the heuristic's fuel factors"
+    priced = set(re.findall(r"(\w+):", table.group(1)))
+
+    assert priced == set(config.KNOWN_FUELS)
+
+
 def test_the_form_ships_disabled():
     """Fail-closed, and closed from the first byte.
 

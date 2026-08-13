@@ -70,7 +70,12 @@ async function loadConfig() {
       throw new ConfigError(`config.json carries no numeric ${key}`);
     }
   }
-  if (!payload.electric_fuel) throw new ConfigError("config.json carries no electric_fuel");
+  // Membership rather than truthiness: a value outside the fuel list would make the
+  // displacement rule below reject every zero-displacement car, EVs included, while
+  // explaining itself with whatever that value happened to be.
+  if (!payload.fuels.includes(payload.electric_fuel)) {
+    throw new ConfigError("config.json's electric_fuel is not one of its fuels");
+  }
   return payload;
 }
 
@@ -400,10 +405,13 @@ async function init() {
   fillSelect("province", CONFIG.provinces);
   applyBounds();
   document.getElementById("valuation").addEventListener("submit", onSubmit);
-  document.getElementById("submit").disabled = false;
 
   backend = await probeBackend();
   renderStatus(backend);
+  // Only now: between the button opening and the banner arriving, a fast submit would have
+  // been answered by the heuristic while the banner still said "Checking…" — which is the
+  // order this change exists to reverse.
+  document.getElementById("submit").disabled = false;
   if (backend === "model") await fillVocabularyHints();
 }
 
