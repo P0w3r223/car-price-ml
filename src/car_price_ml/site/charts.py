@@ -14,6 +14,7 @@ gap look decisive.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from html import escape
 
@@ -23,12 +24,16 @@ _LABEL_WIDTH = 130
 _PAD = 12
 _VALUE_ROOM = 210  # the value label sits outside the bar, and it is a long one here
 
-# Geometry of the depreciation curve, which is plotted rather than laid out in rows.
-_CURVE_HEIGHT = 250
-_CURVE_LEFT = 74
-_CURVE_RIGHT = 24
-_CURVE_TOP = 24
-_CURVE_BASELINE = 200
+# Geometry of the depreciation curve, which is plotted rather than laid out in rows. The
+# baseline sits well above the bottom edge: two rows of text hang under it, the age and the
+# adverts that age's median rests on.
+_CURVE_HEIGHT = 288
+_CURVE_LEFT = 86
+_CURVE_RIGHT = 30
+_CURVE_TOP = 30
+_CURVE_BASELINE = 226
+_CURVE_TICK_EVERY = 5  # years between labelled points, and between x-axis ticks
+_CURVE_Y_TICKS = 4
 
 
 class IncompleteFigure(RuntimeError):
@@ -166,14 +171,41 @@ def driver_chart(bars: list[Bar], title: str) -> str:
     return _svg(_WIDTH, height, f"{title} (mean |SHAP|, log-price)", "".join(parts))
 
 
-def curve_chart(points: list[Point], title: str, x_label: str, y_label: str) -> str:
+def _nice_step(span: float, ticks: int) -> float:
+    """A round interval close to ``span / ticks`` — 1, 2, 2.5 or 5 times a power of ten.
+
+    Axis labels are read, not measured off, so they have to be numbers a person recognises.
+    Dividing the range evenly produces gridlines at 41 574 PLN, which is worse than none.
+    """
+    if span <= 0:
+        return 1.0
+    raw = span / max(1, ticks)
+    magnitude = 10 ** math.floor(math.log10(raw))
+    for multiple in (1, 2, 2.5, 5, 10):
+        if magnitude * multiple >= raw:
+            return magnitude * multiple
+    return magnitude * 10
+
+
+def curve_chart(
+    points: list[Point], title: str, x_label: str, y_label: str,
+    tick_every: int = _CURVE_TICK_EVERY,
+) -> str:
     """Median price against age, drawn from the cleaned adverts themselves.
 
     A line of medians rather than a scatter of individual adverts: the scatter was 4 000
     points of PNG that said nothing the medians do not, and could not be read at all on a
-    phone. Buckets are dropped by the caller before they get here, so every point on the
-    line rests on enough adverts to mean something — and the thinnest bucket's `n` is
-    published in the caption.
+    phone.
+
+    Both axes carry a scale, and every ``tick_every`` years the point carries its exact
+    median with the adverts behind it. Labelling only the two ends — which is how this
+    started — left the whole middle of the curve unreadable: a reader could see that a car
+    loses value quickly and could not tell what a ten-year-old one costs, which is the
+    question the chart is on the page to answer. Not every point is labelled either; that
+    would be a table drawn as a chart, and the table would be 26 rows long.
+
+    Buckets are dropped by the caller before they get here, and the caller refuses a gap in
+    the middle, so the line never bridges an age nobody measured.
     """
     if not points:
         return '<p class="empty">No cleaned adverts to summarise.</p>'
@@ -189,36 +221,68 @@ def curve_chart(points: list[Point], title: str, x_label: str, y_label: str) -> 
         span = _CURVE_BASELINE - _CURVE_TOP
         return _CURVE_BASELINE - max(0.0, min(1.0, value / y_max)) * span
 
-    path = " ".join(f"{x_of(p.x):.1f},{y_of(p.y):.1f}" for p in points)
     parts = [
-        f'<line class="axis-line" x1="{_CURVE_LEFT}" x2="{_CURVE_LEFT + plot_width}" '
-        f'y1="{_CURVE_BASELINE}" y2="{_CURVE_BASELINE}"></line>',
-        f'<line class="axis-line" x1="{_CURVE_LEFT}" x2="{_CURVE_LEFT}" '
-        f'y1="{_CURVE_TOP}" y2="{_CURVE_BASELINE}"></line>',
-        f'<polyline class="series" points="{path}"></polyline>',
-        f'<text class="axis" x="{_CURVE_LEFT - 8}" y="{_CURVE_TOP + 4}" '
-        f'text-anchor="end">{_thousands(y_max)}</text>',
-        f'<text class="axis" x="{_CURVE_LEFT - 8}" y="{_CURVE_BASELINE + 4}" '
-        f'text-anchor="end">0</text>',
-        f'<text class="axis" x="{_CURVE_LEFT}" y="{_CURVE_BASELINE + 20}">'
-        f"{_text(x_label)}</text>",
-        f'<text class="axis" x="{_CURVE_LEFT + plot_width}" y="{_CURVE_BASELINE + 20}" '
-        f'text-anchor="end">{_thousands(x_max)}</text>',
-        f'<text class="axis" x="{_CURVE_LEFT - 8}" y="{_CURVE_TOP - 10}" '
+        f'<text class="axis" x="{_CURVE_LEFT - 8}" y="{_CURVE_TOP - 12}" '
         f'text-anchor="end">{_text(y_label)}</text>',
     ]
-    for point in points:
+
+    # Horizontal gridlines at round prices. They stop at the largest round value the data
+    # actually reaches, so the frame never implies headroom that was never measured.
+    y_step = _nice_step(y_max, _CURVE_Y_TICKS)
+    level = 0.0
+    while level <= y_max:
+        y = y_of(level)
         parts.append(
-            f'<circle class="series-dot" cx="{x_of(point.x):.1f}" '
-            f'cy="{y_of(point.y):.1f}" r="3"></circle>'
+            f'<line class="grid" x1="{_CURVE_LEFT}" x2="{_CURVE_LEFT + plot_width}" '
+            f'y1="{y:.1f}" y2="{y:.1f}"></line>'
+            f'<text class="axis" x="{_CURVE_LEFT - 8}" y="{y + 4:.1f}" '
+            f'text-anchor="end">{_thousands(level)}</text>'
         )
-    # Only the ends are labelled. A number on every marker would be a table drawn as a
-    # chart, and the numbers that matter are the two the curve runs between.
-    first, last = points[0], points[-1]
+        level += y_step
+
     parts.append(
-        f'<text class="bar-value" x="{x_of(first.x) + 8:.1f}" y="{y_of(first.y) - 8:.1f}">'
-        f"{_thousands(first.y)} PLN (n={_thousands(first.n)})</text>"
-        f'<text class="bar-value" x="{x_of(last.x):.1f}" y="{y_of(last.y) - 12:.1f}" '
-        f'text-anchor="end">{_thousands(last.y)} PLN (n={_thousands(last.n)})</text>'
+        f'<line class="axis-line" x1="{_CURVE_LEFT}" x2="{_CURVE_LEFT + plot_width}" '
+        f'y1="{_CURVE_BASELINE}" y2="{_CURVE_BASELINE}"></line>'
+        f'<line class="axis-line" x1="{_CURVE_LEFT}" x2="{_CURVE_LEFT}" '
+        f'y1="{_CURVE_TOP}" y2="{_CURVE_BASELINE}"></line>'
+    )
+
+    path = " ".join(f"{x_of(p.x):.1f},{y_of(p.y):.1f}" for p in points)
+    parts.append(f'<polyline class="series" points="{path}"></polyline>')
+
+    # A labelled point is drawn larger, so the markers carrying a number are distinguishable
+    # from the ones that only shape the line.
+    labelled = {point.x for point in points if point.x % tick_every == 0}
+    for point in points:
+        marked = point.x in labelled
+        classes = "series-dot" if marked else "series-dot minor"
+        radius = 4 if marked else 2.5
+        parts.append(
+            f'<circle class="{classes}" cx="{x_of(point.x):.1f}" '
+            f'cy="{y_of(point.y):.1f}" r="{radius}"></circle>'
+        )
+
+    for point in points:
+        if point.x not in labelled:
+            continue
+        x, y = x_of(point.x), y_of(point.y)
+        # The first and last labels are anchored inward so they cannot run off the frame;
+        # the rest sit centred over their own marker.
+        anchor = "start" if point.x == 0 else ("end" if point.x == x_max else "middle")
+        parts.append(
+            f'<text class="bar-value" x="{x:.1f}" y="{y - 12:.1f}" text-anchor="{anchor}">'
+            f"{_thousands(point.y)} PLN</text>"
+            f'<text class="axis" x="{x:.1f}" y="{_CURVE_BASELINE + 18:.1f}" '
+            f'text-anchor="middle">{_thousands(point.x)}</text>'
+            # The `n` belongs under the value it qualifies, not in a caption the reader has
+            # to hold in their head: the oldest bucket's median rests on 144 adverts and the
+            # five-year-old one on 8 437, and those two medians are not equally solid.
+            f'<text class="axis" x="{x:.1f}" y="{_CURVE_BASELINE + 32:.1f}" '
+            f'text-anchor="middle">n={_thousands(point.n)}</text>'
+        )
+
+    parts.append(
+        f'<text class="axis" x="{_CURVE_LEFT + plot_width}" y="{_CURVE_HEIGHT - 6}" '
+        f'text-anchor="end">{_text(x_label)}</text>'
     )
     return _svg(_WIDTH, _CURVE_HEIGHT, title, "".join(parts))
