@@ -8,3 +8,11 @@ docs/data/*.json text eol=lf
 # form's stylesheet and the bounds it validates against.
 docs/app/styles.css text eol=lf
 docs/app/config.json text eol=lf
+# Not diffed by CI — regenerating them needs the artifact and the dataset — but they are read
+# by the parity test on Linux, and the exported model is compared against the fixture by
+# value, so keeping both in one line ending keeps the failure modes to real ones.
+# -diff because it is one 8.5 MB line: a retrain would otherwise land in review as a diff no
+# tool will render and no human will read. linguist-generated keeps it out of the language
+# statistics, where it would otherwise make this a JSON project.
+docs/app/model.json text eol=lf -diff linguist-generated
+tests/fixtures/*.json text eol=lf

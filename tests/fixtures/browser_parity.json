@@ -1,0 +1,700 @@
+{
+  "schema": 1,
+  "served_model": "LightGBM",
+  "trained_at": "2026-08-13",
+  "tolerance_pln": 0.01,
+  "cases": [
+    {
+      "case": "sampled advert 1",
+      "car": {
+        "mark": "citroen",
+        "model": "c3-picasso",
+        "fuel": "Gasoline",
+        "province": "Lubelskie",
+        "age": 7,
+        "mileage": 62074,
+        "vol_engine": 1199
+      },
+      "expected_pln": 37308.579263
+    },
+    {
+      "case": "sampled advert 2",
+      "car": {
+        "mark": "kia",
+        "model": "sportage",
+        "fuel": "Diesel",
+        "province": "Mazowieckie",
+        "age": 6,
+        "mileage": 145000,
+        "vol_engine": 1685
+      },
+      "expected_pln": 66072.04619
+    },
+    {
+      "case": "sampled advert 3",
+      "car": {
+        "mark": "ford",
+        "model": "kuga",
+        "fuel": "Diesel",
+        "province": "Podkarpackie",
+        "age": 8,
+        "mileage": 114000,
+        "vol_engine": 1997
+      },
+      "expected_pln": 60473.322226
+    },
+    {
+      "case": "sampled advert 4",
+      "car": {
+        "mark": "mercedes-benz",
+        "model": "b-klasa",
+        "fuel": "Gasoline",
+        "province": "Podlaskie",
+        "age": 16,
+        "mileage": 224000,
+        "vol_engine": 1699
+      },
+      "expected_pln": 17052.117554
+    },
+    {
+      "case": "sampled advert 5",
+      "car": {
+        "mark": "renault",
+        "model": "koleos",
+        "fuel": "Diesel",
+        "province": "Śląskie",
+        "age": 1,
+        "mileage": 1383,
+        "vol_engine": 1995
+      },
+      "expected_pln": 173603.891687
+    },
+    {
+      "case": "sampled advert 6",
+      "car": {
+        "mark": "ford",
+        "model": "c-max",
+        "fuel": "Gasoline",
+        "province": "Warmińsko-mazurskie",
+        "age": 9,
+        "mileage": 179990,
+        "vol_engine": 1596
+      },
+      "expected_pln": 34227.557827
+    },
+    {
+      "case": "sampled advert 7",
+      "car": {
+        "mark": "toyota",
+        "model": "yaris",
+        "fuel": "Gasoline",
+        "province": "Śląskie",
+        "age": 13,
+        "mileage": 157000,
+        "vol_engine": 998
+      },
+      "expected_pln": 15698.092567
+    },
+    {
+      "case": "sampled advert 8",
+      "car": {
+        "mark": "volkswagen",
+        "model": "polo",
+        "fuel": "Gasoline",
+        "province": "Małopolskie",
+        "age": 23,
+        "mileage": 93000,
+        "vol_engine": 1598
+      },
+      "expected_pln": 7016.530066
+    },
+    {
+      "case": "sampled advert 9",
+      "car": {
+        "mark": "toyota",
+        "model": "corolla-verso",
+        "fuel": "Gasoline",
+        "province": "Lubelskie",
+        "age": 16,
+        "mileage": 91547,
+        "vol_engine": 1794
+      },
+      "expected_pln": 21194.692295
+    },
+    {
+      "case": "sampled advert 10",
+      "car": {
+        "mark": "bmw",
+        "model": "m5",
+        "fuel": "Gasoline",
+        "province": "Śląskie",
+        "age": 2,
+        "mileage": 19900,
+        "vol_engine": 4395
+      },
+      "expected_pln": 567124.533144
+    },
+    {
+      "case": "sampled advert 11",
+      "car": {
+        "mark": "renault",
+        "model": "modus",
+        "fuel": "Diesel",
+        "province": "Wielkopolskie",
+        "age": 17,
+        "mileage": 199900,
+        "vol_engine": 1461
+      },
+      "expected_pln": 6775.925995
+    },
+    {
+      "case": "sampled advert 12",
+      "car": {
+        "mark": "bmw",
+        "model": "m4",
+        "fuel": "Gasoline",
+        "province": "Mazowieckie",
+        "age": 6,
+        "mileage": 60000,
+        "vol_engine": 2979
+      },
+      "expected_pln": 218481.783461
+    },
+    {
+      "case": "age at the young bound",
+      "car": {
+        "mark": "citroen",
+        "model": "c3-picasso",
+        "fuel": "Gasoline",
+        "province": "Lubelskie",
+        "age": 0,
+        "mileage": 62074,
+        "vol_engine": 1199
+      },
+      "expected_pln": 62664.875096
+    },
+    {
+      "case": "age at the old bound",
+      "car": {
+        "mark": "citroen",
+        "model": "c3-picasso",
+        "fuel": "Gasoline",
+        "province": "Lubelskie",
+        "age": 40,
+        "mileage": 62074,
+        "vol_engine": 1199
+      },
+      "expected_pln": 10927.394457
+    },
+    {
+      "case": "no mileage",
+      "car": {
+        "mark": "citroen",
+        "model": "c3-picasso",
+        "fuel": "Gasoline",
+        "province": "Lubelskie",
+        "age": 7,
+        "mileage": 0,
+        "vol_engine": 1199
+      },
+      "expected_pln": 38254.899624
+    },
+    {
+      "case": "mileage at the ceiling",
+      "car": {
+        "mark": "citroen",
+        "model": "c3-picasso",
+        "fuel": "Gasoline",
+        "province": "Lubelskie",
+        "age": 7,
+        "mileage": 1000000,
+        "vol_engine": 1199
+      },
+      "expected_pln": 30469.817461
+    },
+    {
+      "case": "an EV, for which zero displacement is a fact",
+      "car": {
+        "mark": "citroen",
+        "model": "c3-picasso",
+        "fuel": "Electric",
+        "province": "Lubelskie",
+        "age": 7,
+        "mileage": 62074,
+        "vol_engine": 0
+      },
+      "expected_pln": 45810.254264
+    },
+    {
+      "case": "displacement at the ceiling",
+      "car": {
+        "mark": "citroen",
+        "model": "c3-picasso",
+        "fuel": "Gasoline",
+        "province": "Lubelskie",
+        "age": 7,
+        "mileage": 62074,
+        "vol_engine": 8000
+      },
+      "expected_pln": 84604.296227
+    },
+    {
+      "case": "province Dolnośląskie",
+      "car": {
+        "mark": "citroen",
+        "model": "c3-picasso",
+        "fuel": "Gasoline",
+        "province": "Dolnośląskie",
+        "age": 7,
+        "mileage": 62074,
+        "vol_engine": 1199
+      },
+      "expected_pln": 35162.239351
+    },
+    {
+      "case": "province Kujawsko-pomorskie",
+      "car": {
+        "mark": "citroen",
+        "model": "c3-picasso",
+        "fuel": "Gasoline",
+        "province": "Kujawsko-pomorskie",
+        "age": 7,
+        "mileage": 62074,
+        "vol_engine": 1199
+      },
+      "expected_pln": 34534.645636
+    },
+    {
+      "case": "province Lubelskie",
+      "car": {
+        "mark": "citroen",
+        "model": "c3-picasso",
+        "fuel": "Gasoline",
+        "province": "Lubelskie",
+        "age": 7,
+        "mileage": 62074,
+        "vol_engine": 1199
+      },
+      "expected_pln": 37308.579263
+    },
+    {
+      "case": "province Lubuskie",
+      "car": {
+        "mark": "citroen",
+        "model": "c3-picasso",
+        "fuel": "Gasoline",
+        "province": "Lubuskie",
+        "age": 7,
+        "mileage": 62074,
+        "vol_engine": 1199
+      },
+      "expected_pln": 35020.415618
+    },
+    {
+      "case": "province Łódzkie",
+      "car": {
+        "mark": "citroen",
+        "model": "c3-picasso",
+        "fuel": "Gasoline",
+        "province": "Łódzkie",
+        "age": 7,
+        "mileage": 62074,
+        "vol_engine": 1199
+      },
+      "expected_pln": 35005.056687
+    },
+    {
+      "case": "province Małopolskie",
+      "car": {
+        "mark": "citroen",
+        "model": "c3-picasso",
+        "fuel": "Gasoline",
+        "province": "Małopolskie",
+        "age": 7,
+        "mileage": 62074,
+        "vol_engine": 1199
+      },
+      "expected_pln": 34545.081276
+    },
+    {
+      "case": "province Mazowieckie",
+      "car": {
+        "mark": "citroen",
+        "model": "c3-picasso",
+        "fuel": "Gasoline",
+        "province": "Mazowieckie",
+        "age": 7,
+        "mileage": 62074,
+        "vol_engine": 1199
+      },
+      "expected_pln": 36297.09739
+    },
+    {
+      "case": "province Opolskie",
+      "car": {
+        "mark": "citroen",
+        "model": "c3-picasso",
+        "fuel": "Gasoline",
+        "province": "Opolskie",
+        "age": 7,
+        "mileage": 62074,
+        "vol_engine": 1199
+      },
+      "expected_pln": 34072.888163
+    },
+    {
+      "case": "province Podkarpackie",
+      "car": {
+        "mark": "citroen",
+        "model": "c3-picasso",
+        "fuel": "Gasoline",
+        "province": "Podkarpackie",
+        "age": 7,
+        "mileage": 62074,
+        "vol_engine": 1199
+      },
+      "expected_pln": 33829.663804
+    },
+    {
+      "case": "province Podlaskie",
+      "car": {
+        "mark": "citroen",
+        "model": "c3-picasso",
+        "fuel": "Gasoline",
+        "province": "Podlaskie",
+        "age": 7,
+        "mileage": 62074,
+        "vol_engine": 1199
+      },
+      "expected_pln": 34155.093555
+    },
+    {
+      "case": "province Pomorskie",
+      "car": {
+        "mark": "citroen",
+        "model": "c3-picasso",
+        "fuel": "Gasoline",
+        "province": "Pomorskie",
+        "age": 7,
+        "mileage": 62074,
+        "vol_engine": 1199
+      },
+      "expected_pln": 36545.45527
+    },
+    {
+      "case": "province Śląskie",
+      "car": {
+        "mark": "citroen",
+        "model": "c3-picasso",
+        "fuel": "Gasoline",
+        "province": "Śląskie",
+        "age": 7,
+        "mileage": 62074,
+        "vol_engine": 1199
+      },
+      "expected_pln": 34276.961765
+    },
+    {
+      "case": "province Świętokrzyskie",
+      "car": {
+        "mark": "citroen",
+        "model": "c3-picasso",
+        "fuel": "Gasoline",
+        "province": "Świętokrzyskie",
+        "age": 7,
+        "mileage": 62074,
+        "vol_engine": 1199
+      },
+      "expected_pln": 33226.162077
+    },
+    {
+      "case": "province Warmińsko-mazurskie",
+      "car": {
+        "mark": "citroen",
+        "model": "c3-picasso",
+        "fuel": "Gasoline",
+        "province": "Warmińsko-mazurskie",
+        "age": 7,
+        "mileage": 62074,
+        "vol_engine": 1199
+      },
+      "expected_pln": 34608.405079
+    },
+    {
+      "case": "province Wielkopolskie",
+      "car": {
+        "mark": "citroen",
+        "model": "c3-picasso",
+        "fuel": "Gasoline",
+        "province": "Wielkopolskie",
+        "age": 7,
+        "mileage": 62074,
+        "vol_engine": 1199
+      },
+      "expected_pln": 31899.793255
+    },
+    {
+      "case": "province Zachodniopomorskie",
+      "car": {
+        "mark": "citroen",
+        "model": "c3-picasso",
+        "fuel": "Gasoline",
+        "province": "Zachodniopomorskie",
+        "age": 7,
+        "mileage": 62074,
+        "vol_engine": 1199
+      },
+      "expected_pln": 33738.447474
+    },
+    {
+      "case": "fuel CNG",
+      "car": {
+        "mark": "citroen",
+        "model": "c3-picasso",
+        "fuel": "CNG",
+        "province": "Lubelskie",
+        "age": 7,
+        "mileage": 62074,
+        "vol_engine": 1199
+      },
+      "expected_pln": 33456.845687
+    },
+    {
+      "case": "fuel Diesel",
+      "car": {
+        "mark": "citroen",
+        "model": "c3-picasso",
+        "fuel": "Diesel",
+        "province": "Lubelskie",
+        "age": 7,
+        "mileage": 62074,
+        "vol_engine": 1199
+      },
+      "expected_pln": 34755.133183
+    },
+    {
+      "case": "fuel Electric",
+      "car": {
+        "mark": "citroen",
+        "model": "c3-picasso",
+        "fuel": "Electric",
+        "province": "Lubelskie",
+        "age": 7,
+        "mileage": 62074,
+        "vol_engine": 0
+      },
+      "expected_pln": 45810.254264
+    },
+    {
+      "case": "fuel Gasoline",
+      "car": {
+        "mark": "citroen",
+        "model": "c3-picasso",
+        "fuel": "Gasoline",
+        "province": "Lubelskie",
+        "age": 7,
+        "mileage": 62074,
+        "vol_engine": 1199
+      },
+      "expected_pln": 37308.579263
+    },
+    {
+      "case": "fuel Hybrid",
+      "car": {
+        "mark": "citroen",
+        "model": "c3-picasso",
+        "fuel": "Hybrid",
+        "province": "Lubelskie",
+        "age": 7,
+        "mileage": 62074,
+        "vol_engine": 1199
+      },
+      "expected_pln": 41173.427497
+    },
+    {
+      "case": "fuel LPG",
+      "car": {
+        "mark": "citroen",
+        "model": "c3-picasso",
+        "fuel": "LPG",
+        "province": "Lubelskie",
+        "age": 7,
+        "mileage": 62074,
+        "vol_engine": 1199
+      },
+      "expected_pln": 37336.346271
+    },
+    {
+      "case": "age exactly on a split threshold",
+      "car": {
+        "mark": "citroen",
+        "model": "c3-picasso",
+        "fuel": "Gasoline",
+        "province": "Lubelskie",
+        "age": 12.5,
+        "mileage": 62074,
+        "vol_engine": 1199
+      },
+      "api": false,
+      "expected_pln": 20675.480834
+    },
+    {
+      "case": "age just below a split threshold",
+      "car": {
+        "mark": "citroen",
+        "model": "c3-picasso",
+        "fuel": "Gasoline",
+        "province": "Lubelskie",
+        "age": 12,
+        "mileage": 62074,
+        "vol_engine": 1199
+      },
+      "expected_pln": 20675.480834
+    },
+    {
+      "case": "age just above a split threshold",
+      "car": {
+        "mark": "citroen",
+        "model": "c3-picasso",
+        "fuel": "Gasoline",
+        "province": "Lubelskie",
+        "age": 13,
+        "mileage": 62074,
+        "vol_engine": 1199
+      },
+      "expected_pln": 17553.180964
+    },
+    {
+      "case": "mileage exactly on a split threshold",
+      "car": {
+        "mark": "citroen",
+        "model": "c3-picasso",
+        "fuel": "Gasoline",
+        "province": "Lubelskie",
+        "age": 7,
+        "mileage": 172000.5,
+        "vol_engine": 1199
+      },
+      "api": false,
+      "expected_pln": 29195.791317
+    },
+    {
+      "case": "mileage just below a split threshold",
+      "car": {
+        "mark": "citroen",
+        "model": "c3-picasso",
+        "fuel": "Gasoline",
+        "province": "Lubelskie",
+        "age": 7,
+        "mileage": 172000,
+        "vol_engine": 1199
+      },
+      "expected_pln": 29195.791317
+    },
+    {
+      "case": "mileage just above a split threshold",
+      "car": {
+        "mark": "citroen",
+        "model": "c3-picasso",
+        "fuel": "Gasoline",
+        "province": "Lubelskie",
+        "age": 7,
+        "mileage": 172001,
+        "vol_engine": 1199
+      },
+      "expected_pln": 29195.791317
+    },
+    {
+      "case": "vol_engine exactly on a split threshold",
+      "car": {
+        "mark": "citroen",
+        "model": "c3-picasso",
+        "fuel": "Gasoline",
+        "province": "Lubelskie",
+        "age": 7,
+        "mileage": 62074,
+        "vol_engine": 1957.0
+      },
+      "api": false,
+      "expected_pln": 47888.099911
+    },
+    {
+      "case": "vol_engine just below a split threshold",
+      "car": {
+        "mark": "citroen",
+        "model": "c3-picasso",
+        "fuel": "Gasoline",
+        "province": "Lubelskie",
+        "age": 7,
+        "mileage": 62074,
+        "vol_engine": 1957
+      },
+      "expected_pln": 47888.099911
+    },
+    {
+      "case": "vol_engine just above a split threshold",
+      "car": {
+        "mark": "citroen",
+        "model": "c3-picasso",
+        "fuel": "Gasoline",
+        "province": "Lubelskie",
+        "age": 7,
+        "mileage": 62074,
+        "vol_engine": 1958
+      },
+      "expected_pln": 50949.028868
+    },
+    {
+      "case": "a make the model never saw",
+      "car": {
+        "mark": "ferrari",
+        "model": "f40",
+        "fuel": "Gasoline",
+        "province": "Lubelskie",
+        "age": 7,
+        "mileage": 62074,
+        "vol_engine": 1199
+      },
+      "refused": "mark"
+    },
+    {
+      "case": "a model the model never saw",
+      "car": {
+        "mark": "citroen",
+        "model": "qqqq",
+        "fuel": "Gasoline",
+        "province": "Lubelskie",
+        "age": 7,
+        "mileage": 62074,
+        "vol_engine": 1199
+      },
+      "refused": "model"
+    },
+    {
+      "case": "a fuel outside the declared domain",
+      "car": {
+        "mark": "citroen",
+        "model": "c3-picasso",
+        "fuel": "Petrol",
+        "province": "Lubelskie",
+        "age": 7,
+        "mileage": 62074,
+        "vol_engine": 1199
+      },
+      "refused": "fuel"
+    },
+    {
+      "case": "a province outside Poland",
+      "car": {
+        "mark": "citroen",
+        "model": "c3-picasso",
+        "fuel": "Gasoline",
+        "province": "Berlin",
+        "age": 7,
+        "mileage": 62074,
+        "vol_engine": 1199
+      },
+      "refused": "province"
+    }
+  ]
+}
