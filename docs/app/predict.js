@@ -11,7 +11,7 @@
 // every time is a substituted default that looked like an answer, and a model running on the
 // reader's own machine is the easiest place in the system to hide one.
 
-const MODEL_SCHEMA = 1; // must match browser_model.BROWSER_MODEL_SCHEMA
+const MODEL_SCHEMA = 2; // must match browser_model.BROWSER_MODEL_SCHEMA
 const LEAF = -1; // feature[i] === LEAF marks a leaf, whose answer is value[i]
 const STEP_KINDS = ["target_encode", "one_hot", "numeric"];
 
@@ -52,6 +52,19 @@ function checkPayload(payload) {
     }
     if (step.kind === "target_encode" && (!step.map || typeof step.map !== "object")) {
       throw new ModelError(`model.json's encoding step for ${step.field} carries no map`);
+    }
+  }
+  // Every valuation is shown with the spread measured for its price band, so a payload with
+  // no bands cannot be run: the alternative is a figure presented as more precise than the
+  // model has ever been.
+  if (!Array.isArray(payload.error_bands) || payload.error_bands.length === 0) {
+    throw new ModelError("model.json carries no error bands");
+  }
+  for (const band of payload.error_bands) {
+    for (const key of ["from_pln", "to_pln", "p50_abs_error", "p90_abs_error"]) {
+      if (!Number.isFinite(band[key])) {
+        throw new ModelError(`model.json has an error band with no numeric ${key}`);
+      }
     }
   }
   const trees = payload.trees;
@@ -168,9 +181,24 @@ function createModel(payload) {
     else if (step.kind === "one_hot") vocabulary[step.field] = step.categories.slice();
   }
 
+  /**
+   * How wrong this model tends to be on a car priced like this one.
+   * Returns the measured band containing `price`, or the nearest one when a valuation falls
+   * outside the range the out-of-fold predictions covered — clamping rather than inventing,
+   * and the caller is told which happened.
+   */
+  function errorBand(price) {
+    const bands = payload.error_bands;
+    const found = bands.find((band) => price >= band.from_pln && price <= band.to_pln);
+    if (found) return { ...found, measured: true };
+    const nearest = price < bands[0].from_pln ? bands[0] : bands[bands.length - 1];
+    return { ...nearest, measured: false };
+  }
+
   return {
     predict,
     encode,
+    errorBand,
     vocabulary,
     servedModel: payload.served_model,
     trainedAt: payload.trained_at,

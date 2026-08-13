@@ -28,6 +28,7 @@ src/car_price_ml/
     charts.py       # inline SVG; refuses to draw a MAE without its fold spread
     build.py        # renders docs/index.html from those committed aggregates alone
     form.py         # writes docs/app/{config.json,styles.css} from config.py alone
+    assets/chart.css # chart styling shared by charts.py and the form's curve.js
     browser_model.py # exports the served model + the parity fixture (needs artifact + data)
     assets/         # tokens.css (shared palette) + base.css, then report.css / form.css
 api/            # FastAPI /predict + /vocabulary service, serving docs/app at its root
@@ -49,6 +50,14 @@ vocabulary and no bound, and refuses to run at all if that file is missing, stal
 incomplete. It is emitted beside the form (not into `docs/data/`) because the API mounts
 `docs/app` at its root, so a sibling path resolves in both deployments. Both generated files
 are under the same CI diff guard as the page.
+
+The form answers **as you type** — the model is local, so a valuation costs a millisecond and
+no request — and never shows a price without the spread measured for its band. `train.py`
+keeps the winner's out-of-fold predictions and stamps `oof_error_bands` into the artifact
+(median and p90 absolute error per decile of predicted price); the median absolute error runs
+from about 1 500 PLN in the cheapest tenth of the market to 21 600 in the dearest, so the
+report's single 8 612 PLN MAE would be wrong in both directions if quoted beside a valuation.
+A payload without those bands is refused rather than shown bare.
 
 The form also **runs the model**. `docs/app/model.json` is the served booster as parallel
 arrays plus the preprocessing expressed as an ordered plan, and `docs/app/predict.js` walks

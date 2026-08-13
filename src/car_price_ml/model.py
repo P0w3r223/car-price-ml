@@ -79,8 +79,8 @@ def evaluate(y_true, y_pred) -> dict[str, float]:
 
 def cross_validate_models(
     x: pd.DataFrame, y: pd.Series, n_splits: int = config.CV_FOLDS,
-    random_state: int = config.RANDOM_STATE,
-) -> dict[str, dict[str, float]]:
+    random_state: int = config.RANDOM_STATE, return_predictions: bool = False,
+) -> dict[str, dict[str, float]] | tuple[dict[str, dict[str, float]], dict[str, np.ndarray]]:
     """k-fold CV with out-of-fold PLN predictions; returns pooled metrics per model.
 
     Also reports the fold-to-fold spread of MAE. A pooled number alone cannot say whether
@@ -92,6 +92,7 @@ def cross_validate_models(
     kf = KFold(n_splits=n_splits, shuffle=True, random_state=random_state)
     folds = list(kf.split(x))
     results: dict[str, dict[str, float]] = {}
+    predictions: dict[str, np.ndarray] = {}
     for name, model in build_models(random_state).items():
         # Outer CV is single-process: the estimators already parallelise internally
         # (n_jobs=-1), so nesting n_jobs here would oversubscribe the CPUs.
@@ -103,7 +104,54 @@ def cross_validate_models(
             **evaluate(y, oof_pred),
             "mae_fold_std": round(float(np.std(per_fold, ddof=1)), 1),
         }
-    return results
+        predictions[name] = oof_pred
+    # The predictions are returned rather than kept, because they are the only honest source
+    # for "how wrong is this model on a car like yours" and re-deriving them would mean a
+    # second k-fold run of the winner for numbers this one already computed. They stay out of
+    # the metrics dict: that dict is stamped into the artifact and rendered as JSON, and a
+    # 111 018-element array does not belong in either.
+    return (results, predictions) if return_predictions else results
+
+
+# Bands under this many out-of-fold predictions are refused rather than published: an error
+# quantile over a handful of cars is noise the reader would take for a property of the model.
+MIN_BAND_N = 500
+
+
+def residual_quantiles(y_true, y_pred, bands: int = 10) -> list[dict]:
+    """How wrong the model is, by band of *predicted* price.
+
+    Reported against the prediction rather than the truth because that is what a caller has:
+    at valuation time the price is the only thing known, so a band keyed by anything else
+    could not be looked up. Absolute error is summarised at the median and the 90th
+    percentile — "half of cars like this land within X, nine in ten within Y" — and the signed
+    median comes with it, because a band can be tight and still be systematically low.
+    """
+    frame = pd.DataFrame({"actual": np.asarray(y_true, dtype=float),
+                          "predicted": np.asarray(y_pred, dtype=float)})
+    frame["error"] = frame["actual"] - frame["predicted"]
+    # `duplicates="drop"` because a heavily tied prediction column would otherwise raise; the
+    # count check below is what actually guards the result.
+    frame["band"] = pd.qcut(frame["predicted"], bands, labels=False, duplicates="drop")
+
+    summary = []
+    for band, rows in frame.groupby("band", sort=True):
+        if len(rows) < MIN_BAND_N:
+            raise ValueError(
+                f"predicted-price band {int(band)} holds {len(rows)} out-of-fold predictions, "
+                f"under {MIN_BAND_N} — its error quantiles would be noise published as a "
+                f"property of the model"
+            )
+        absolute = rows["error"].abs()
+        summary.append({
+            "from_pln": round(float(rows["predicted"].min()), 2),
+            "to_pln": round(float(rows["predicted"].max()), 2),
+            "n": int(len(rows)),
+            "p50_abs_error": round(float(absolute.quantile(0.5)), 2),
+            "p90_abs_error": round(float(absolute.quantile(0.9)), 2),
+            "median_signed_error": round(float(rows["error"].median()), 2),
+        })
+    return summary
 
 
 def train(x: pd.DataFrame, y: pd.Series, name: str,

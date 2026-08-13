@@ -211,6 +211,55 @@ def test_the_javascript_runtime_refuses_what_it_cannot_price(fixture, javascript
 
 @needs_fixture
 @needs_node
+def test_the_javascript_picks_the_same_error_band_as_the_python(fixture, javascript, payload):
+    """Every valuation is shown with a spread, so the lookup that chooses it is load-bearing.
+
+    A band boundary is an off-by-one waiting to happen — `<` against `<=`, or a clamp that
+    silently reports the nearest band as measured — and the reader would see a plausible
+    number either way.
+    """
+    answered = {result["case"]: result for result in javascript["results"]}
+    for case in _priced(fixture):
+        chosen = answered[case["case"]]["band"]
+        expected = browser_model.error_band(payload, case["expected_pln"])
+
+        assert chosen["from"] == expected["from_pln"], case["case"]
+        assert chosen["to"] == expected["to_pln"], case["case"]
+        assert chosen["p50"] == expected["p50_abs_error"], case["case"]
+        assert chosen["measured"] is expected["measured"], case["case"]
+
+
+@needs_fixture
+def test_the_error_bands_are_measured_and_ordered(payload):
+    """The spread quoted beside a price has to come from somewhere and cover everything.
+
+    Reads the committed export only, so it runs in CI: the bands must ascend, meet without a
+    gap a price could fall through, and grow — an error band that did not widen with price
+    would mean the model is equally precise on a 3 000 PLN car and a 300 000 PLN one, which
+    would be a measurement worth disbelieving.
+    """
+    bands = payload["error_bands"]
+    assert len(bands) >= 5
+
+    for lower, upper in zip(bands, bands[1:]):
+        assert lower["to_pln"] <= upper["from_pln"]
+        assert lower["n"] > 0
+    assert bands[0]["p50_abs_error"] < bands[-1]["p50_abs_error"]
+    for band in bands:
+        assert 0 < band["p50_abs_error"] <= band["p90_abs_error"]
+
+
+@needs_fixture
+@needs_artifact
+def test_the_published_bands_are_the_artifacts_own(payload):
+    """Exported, not recomputed — the page must quote the errors this artifact measured."""
+    metadata = model_module.load_model()["metadata"]
+
+    assert payload["error_bands"] == metadata["oof_error_bands"]
+
+
+@needs_fixture
+@needs_node
 def test_the_javascript_runtime_loaded_the_model_that_was_exported(javascript, payload):
     assert javascript["servedModel"] == payload["served_model"]
     assert javascript["treeCount"] == len(payload["trees"]["roots"])

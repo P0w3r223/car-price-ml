@@ -75,13 +75,36 @@ button:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
 .status.broken .status-label { color: var(--danger); }
 .status p { margin: 0.35rem 0 0; font-size: 0.92rem; color: var(--muted); }
 
+/* The what-if sliders sit under the field they move, quieter than the field itself: they are
+   a way to explore the model's answer, not a second place to enter the car. */
+.slider {
+  width: 100%;
+  padding: 0;
+  margin-top: 0.15rem;
+  border: none;
+  background: none;
+  accent-color: var(--accent);
+}
+
 .result { margin: 1.25rem 0; }
 .result.prediction { border-left: 3px solid var(--accent); }
 .result.refused { border-left: 3px solid var(--danger); }
+/* Nothing is wrong yet — the form is simply not filled in, and colouring that like a refusal
+   would tell the reader off for having started. */
+.result.pending { border-left: 3px solid var(--border); }
 
 .result-label { font-weight: 600; font-size: 0.85rem; }
 .result.prediction .result-label { color: var(--accent); }
 .result.refused .result-label { color: var(--danger); }
+.result.pending .result-label { color: var(--muted); }
+
+/* The figure changes as the reader types, so it moves rather than jumping — but only for
+   readers who have not asked the system for less motion. */
+.price { transition: color 120ms ease-out; }
+
+@media (prefers-reduced-motion: reduce) {
+  .price { transition: none; }
+}
 
 .price {
   font-size: 2rem;

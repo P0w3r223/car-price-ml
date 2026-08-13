@@ -64,13 +64,18 @@ def train_and_save(model_name: str | None = BEST_MODEL):
     df = data.clean(raw)
     x, y = features.prepare(df)
     print(f"[train] {len(x):,} rows — running {config.CV_FOLDS}-fold bake-off ...", flush=True)
-    cv = model.cross_validate_models(x, y)
+    cv, oof = model.cross_validate_models(x, y, return_predictions=True)
     print("[train] CV (PLN):")
     print(json.dumps(cv, indent=2))
 
     chosen = _select(cv, model_name)
     print(f"[train] training {chosen} (MAE {cv[chosen]['mae']:,.0f})", flush=True)
     best = model.train(x, y, name=chosen)
+    # Measured from the winner's own out-of-fold predictions, so the artifact carries not just
+    # what it costs on average but how wrong it tends to be on a car of a given price. A single
+    # MAE would flatten that: 8 612 PLN means something very different on a 15 000 PLN car and
+    # on a 150 000 PLN one, and the form quotes this number beside every valuation.
+    residuals = model.residual_quantiles(y, oof[chosen])
     path = model.save_model(
         best,
         metadata={
@@ -78,6 +83,7 @@ def train_and_save(model_name: str | None = BEST_MODEL):
             "cv_metrics": cv[chosen],
             "cv_all": cv,
             "n_train": len(x),
+            "oof_error_bands": residuals,
         },  # the feature spec is stamped by save_model, so it cannot drift from the code
     )
     print(f"[train] saved {chosen} -> {path}")

@@ -128,3 +128,39 @@ def test_load_model_rejects_a_different_age_anchor(tmp_path):
     )
     with pytest.raises(ValueError, match="off by 2 years"):
         model.load_model(models_dir=tmp_path)
+
+
+# --- how wrong the model is, by price band ------------------------------------------------
+
+def test_error_bands_are_reported_against_the_prediction_not_the_truth():
+    """At valuation time the price is all a caller has, so the band has to be keyed by it."""
+    truth = pd.Series(np.linspace(5_000, 200_000, 5_000))
+    predicted = truth * 1.05  # a uniform 5 % overshoot: the error must scale with the price
+
+    bands = model.residual_quantiles(truth, predicted, bands=5)
+
+    assert [band["from_pln"] for band in bands] == sorted(band["from_pln"] for band in bands)
+    assert bands[0]["p50_abs_error"] < bands[-1]["p50_abs_error"]
+    # A systematic overshoot has to show as a signed error, not be hidden by taking absolutes.
+    assert all(band["median_signed_error"] < 0 for band in bands)
+
+
+def test_a_thin_error_band_is_refused_rather_than_published():
+    """Quantiles over a handful of cars are noise, and noise beside a price reads as a fact."""
+    truth = pd.Series(np.linspace(5_000, 200_000, 100))
+
+    with pytest.raises(ValueError, match="under 500"):
+        model.residual_quantiles(truth, truth * 1.1, bands=10)
+
+
+def test_cross_validation_can_return_the_predictions_it_already_made():
+    """The bands need out-of-fold predictions; re-deriving them would be a second k-fold run."""
+    x, y = features.prepare(_df())
+
+    results, predictions = model.cross_validate_models(
+        x, y, n_splits=2, return_predictions=True
+    )
+
+    assert set(results) == set(predictions)
+    for name, predicted in predictions.items():
+        assert len(predicted) == len(y), name
