@@ -150,7 +150,7 @@ def _drivers(fitted, x: pd.DataFrame) -> list[dict]:
 
     totals: dict[str, float] = {column: 0.0 for column in features.FEATURE_COLUMNS}
     slots_per_column: dict[str, int] = {column: 0 for column in features.FEATURE_COLUMNS}
-    for name, value in zip(names, per_slot):
+    for name, value in zip(names, per_slot, strict=True):
         # One-hot slots are named "<column>_<category>"; the encoder is fit on the declared
         # domains, so the prefix match is against a closed set rather than a guess.
         owner = next(
@@ -231,7 +231,8 @@ def _refusals(fitted, vocabulary: dict[str, list[str]]) -> list[dict]:
         rule="refused — zero displacement is only meaningful for an EV",
         unguarded=f"{_pln(no_engine)} "
                   f"({(no_engine / control - 1):+.0%} against the same car with an engine)",
-        lesson="In this dataset zero displacement means 'missing', except on an EV where it is a fact.",
+        lesson="In this dataset zero displacement means 'missing', except on an EV where it "
+               "is a fact.",
     ))
 
     # Out-of-domain one-hot values. These no longer reach a prediction at all: the encoder is
