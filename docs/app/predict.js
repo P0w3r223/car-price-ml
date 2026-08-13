@@ -11,7 +11,7 @@
 // every time is a substituted default that looked like an answer, and a model running on the
 // reader's own machine is the easiest place in the system to hide one.
 
-const MODEL_SCHEMA = 2; // must match browser_model.BROWSER_MODEL_SCHEMA
+const MODEL_SCHEMA = 3; // must match browser_model.BROWSER_MODEL_SCHEMA
 const LEAF = -1; // feature[i] === LEAF marks a leaf, whose answer is value[i]
 const STEP_KINDS = ["target_encode", "one_hot", "numeric"];
 
@@ -60,12 +60,26 @@ function checkPayload(payload) {
   if (!Array.isArray(payload.error_bands) || payload.error_bands.length === 0) {
     throw new ModelError("model.json carries no error bands");
   }
+  if (!payload.age_support || !Number.isFinite(payload.age_support.max_age)) {
+    throw new ModelError("model.json does not say how far the data supports its answers");
+  }
+  let previousEdge = null;
   for (const band of payload.error_bands) {
     for (const key of ["from_pln", "to_pln", "p50_abs_error", "p90_abs_error"]) {
       if (!Number.isFinite(band[key])) {
         throw new ModelError(`model.json has an error band with no numeric ${key}`);
       }
     }
+    // Ascending and contiguous, checked here as well as in the exporter: `errorBand` below
+    // clamps to the first or last band for a price outside the range, which is only the right
+    // answer if the bands really are in order and leave no interior gap to fall into.
+    if (band.from_pln >= band.to_pln) {
+      throw new ModelError(`model.json has an error band that does not ascend (${band.from_pln}-${band.to_pln})`);
+    }
+    if (previousEdge !== null && band.from_pln !== previousEdge) {
+      throw new ModelError(`model.json's error bands leave a gap at ${previousEdge}`);
+    }
+    previousEdge = band.to_pln;
   }
   const trees = payload.trees;
   for (const key of ["feature", "threshold", "left", "right", "value", "roots"]) {
@@ -159,8 +173,22 @@ function createModel(payload) {
     return row;
   }
 
-  function predict(car) {
-    const row = encode(car);
+  /** Where a plan field's value sits in the encoded row — for sweeping one input cheaply. */
+  function columnIndex(field) {
+    let index = 0;
+    for (const step of plan) {
+      if (step.field === field) {
+        if (step.kind === "one_hot") {
+          throw new ModelError(`${field} occupies ${step.categories.length} columns, not one`);
+        }
+        return index;
+      }
+      index += step.kind === "one_hot" ? step.categories.length : 1;
+    }
+    throw new ModelError(`the plan has no ${field} column`);
+  }
+
+  function predictRow(row) {
     let total = 0;
     for (let t = 0; t < trees.roots.length; t += 1) {
       let node = trees.roots[t];
@@ -171,6 +199,10 @@ function createModel(payload) {
       total += trees.value[node];
     }
     return Math.expm1(total);
+  }
+
+  function predict(car) {
+    return predictRow(encode(car));
   }
 
   // What the model can price, read off the plan rather than restated: the same lists the
@@ -189,7 +221,9 @@ function createModel(payload) {
    */
   function errorBand(price) {
     const bands = payload.error_bands;
-    const found = bands.find((band) => price >= band.from_pln && price <= band.to_pln);
+    // Half-open except at the top, so a price on a shared edge belongs to exactly one band.
+    const found = bands.find((band, index) => price >= band.from_pln
+      && (index === bands.length - 1 ? price <= band.to_pln : price < band.to_pln));
     if (found) return { ...found, measured: true };
     const nearest = price < bands[0].from_pln ? bands[0] : bands[bands.length - 1];
     return { ...nearest, measured: false };
@@ -197,8 +231,14 @@ function createModel(payload) {
 
   return {
     predict,
+    predictRow,
     encode,
+    columnIndex,
     errorBand,
+    // The oldest age the data supports, measured at export by the rule the report's own
+    // depreciation curve obeys. The model will answer for any age; past this one it is
+    // extrapolating over buckets the site refuses to plot.
+    ageSupport: payload.age_support,
     vocabulary,
     servedModel: payload.served_model,
     trainedAt: payload.trained_at,

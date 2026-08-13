@@ -44,13 +44,24 @@ has, so a band keyed by anything else could not be looked up. Bands under 500 ou
 predictions are refused rather than published, for the same reason the depreciation curve
 drops thin age buckets.
 
+The band edges are the **cut points**, not each band's observed minimum and maximum. That
+distinction was found in review after the first version shipped observed extrema: neighbouring
+bands then did not meet, leaving nine gaps of 0.05 to 8.84 PLN, and a valuation landing in one
+matched no band at all. Both lookups answer an unmatched price with the nearest band — which
+above the first gap means the most expensive one — so a 12 976 PLN car was told that half of
+cars like it land within 21 606 PLN rather than 1 498, with a caveat about being outside the
+measured range that was also false. Both implementations agreed, because both were written
+from the same wrong idea: the parity leg proves agreement, not correctness. The edges are
+rounded once and shared, the intervals are half-open, and the export now refuses a set of
+bands with a gap in it.
+
 The signed error is carried because a band can be tight and still be systematically low. It
 is small everywhere except the top band (+2 204 PLN), which is worth knowing about the model.
 
 ### 2. No valuation is shown without it
 
-The exported payload carries the bands (schema 2), `predict.js` refuses a payload without
-them, and every price the form shows — live or submitted, from the page or from the API —
+The exported payload carries the bands (schema 3, which also carries the age range the data
+supports), `predict.js` refuses a payload without them, and every price the form shows — live or submitted, from the page or from the API —
 comes with the measured spread for its band. Outside the range the out-of-fold predictions
 covered, the nearest band is used **and labelled as not measured for this price**, rather
 than being presented as if it were.
@@ -70,8 +81,12 @@ quietly becoming chatty.
 
 ### 4. The what-if curve is computed, not looked up
 
-The panel under the form prices the car currently in the form at every age the model was
-trained on — 41 predictions, redrawn on every change. It is deliberately not the report's
+The panel under the form prices the car currently in the form at every age **the data
+supports** — 26 predictions, redrawn on every change. It stops at 25 years because that is
+where the report's own depreciation curve stops, by the same `n ≥ 100` rule, now stated once
+in `site/__init__.py` and read by both. Drawn to 40 the curve was a claim: past 33 the model
+returns one flat number (the trees run out of splits) and between 29 and 33 it has the car
+*gaining* value — in the same visual language as a measured chart, on the same site. It is deliberately not the report's
 depreciation curve: that one is the market's median advert price by age, a description of the
 data, while this one is the model's answer for *this* car with everything else held. Drawn by
 `docs/app/curve.js` with the class names `charts.py` uses, so the two halves of the site are
@@ -97,14 +112,17 @@ someone deciding what their car is worth.
 ## Consequences
 
 - **The artifact must be retrained to carry the bands**, and `browser_model` refuses to export
-  one that cannot state its own error. Payload schema 1 → 2.
+  one that cannot state its own error, or one whose bands leave a gap. Payload schema 1 → 3.
+- **`MIN_BUCKET_N` moved to `site/__init__.py`**: the report's curve and the form's now obey
+  one rule about which ages the data supports, rather than two copies of it.
 - **`cross_validate_models` gained `return_predictions`.** The predictions stay out of the
   metrics dict, which is stamped into the artifact and rendered as JSON — a 111 018-element
   array belongs in neither.
 - **Chart styling moved to `assets/chart.css`**, shared by the report and the form.
 - **146 → 153 tests**, including a leg that compares the band `predict.js` picks against the
-  band the Python reference picks, for every priced case in the parity fixture. A boundary
-  chosen with `<` instead of `<=` would otherwise be invisible.
+  band the Python reference picks, for every priced case in the parity fixture, and one that
+  requires neighbouring bands to *meet* rather than merely to ascend — the assertion that
+  would have caught the gap above.
 
 ### Accepted residual risk
 

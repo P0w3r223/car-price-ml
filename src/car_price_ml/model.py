@@ -132,7 +132,17 @@ def residual_quantiles(y_true, y_pred, bands: int = 10) -> list[dict]:
     frame["error"] = frame["actual"] - frame["predicted"]
     # `duplicates="drop"` because a heavily tied prediction column would otherwise raise; the
     # count check below is what actually guards the result.
-    frame["band"] = pd.qcut(frame["predicted"], bands, labels=False, duplicates="drop")
+    frame["band"], raw_edges = pd.qcut(
+        frame["predicted"], bands, labels=False, duplicates="drop", retbins=True
+    )
+    # The *cut* edges, not each band's observed minimum and maximum. Observed extrema leave a
+    # gap between every pair of neighbours — measured at 0.05 to 8.84 PLN on the served model
+    # — and a valuation landing in one matches no band at all. Both lookups then fall back to
+    # "outside the measured range", which sent a 12 976 PLN car to the most expensive band's
+    # spread: 21 606 PLN instead of 1 498, with a caveat saying so that was also false.
+    # Rounded once here so neighbouring bands share the identical number and cannot drift
+    # apart at the boundary.
+    edges = [round(float(edge), 2) for edge in raw_edges]
 
     summary = []
     for band, rows in frame.groupby("band", sort=True):
@@ -144,8 +154,8 @@ def residual_quantiles(y_true, y_pred, bands: int = 10) -> list[dict]:
             )
         absolute = rows["error"].abs()
         summary.append({
-            "from_pln": round(float(rows["predicted"].min()), 2),
-            "to_pln": round(float(rows["predicted"].max()), 2),
+            "from_pln": edges[int(band)],
+            "to_pln": edges[int(band) + 1],
             "n": int(len(rows)),
             "p50_abs_error": round(float(absolute.quantile(0.5)), 2),
             "p90_abs_error": round(float(absolute.quantile(0.9)), 2),

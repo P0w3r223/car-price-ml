@@ -242,7 +242,12 @@ def test_the_error_bands_are_measured_and_ordered(payload):
     assert len(bands) >= 5
 
     for lower, upper in zip(bands, bands[1:]):
-        assert lower["to_pln"] <= upper["from_pln"]
+        # Equal, not merely ordered. They were merely ordered once: the edges were each band's
+        # observed minimum and maximum, which left nine gaps of 0.05 to 8.84 PLN, and a price
+        # in one matched no band and was handed the most expensive band's spread — 21 606 PLN
+        # quoted for a 12 976 PLN car, with a caveat about being outside the measured range
+        # that was itself false. This assertion is what would have caught it.
+        assert lower["to_pln"] == upper["from_pln"]
         assert lower["n"] > 0
     assert bands[0]["p50_abs_error"] < bands[-1]["p50_abs_error"]
     for band in bands:

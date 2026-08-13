@@ -111,6 +111,12 @@ function element(tag, className, text) {
   return node;
 }
 
+/** Announce this card: it is an answer to something the reader asked for, not a preview. */
+function announce(target) {
+  target.setAttribute("aria-live", "polite");
+  return target;
+}
+
 // Built as nodes rather than assembled as HTML: `detail` comes from the service, and a
 // valuation form has no business interpreting anything it is told as markup.
 function renderCard(target, className, label, children) {
@@ -160,25 +166,38 @@ function renderUnavailable(reason) {
 function renderProblems(messages) {
   const list = element("ul", "problems");
   for (const message of messages) list.appendChild(element("li", null, message));
-  renderCard(document.getElementById("result"), "card result refused",
+  renderCard(announce(document.getElementById("result")), "card result refused",
              { className: "result-label", text: "Not sent — the input is outside what the "
                                                 + "model can price" },
              [list]);
 }
 
-/** The measured spread for a price, said in the terms the measurement supports. */
+/**
+ * The measured spread for a price, said in the terms the measurement supports.
+ * Null when there is no local model to read the bands off — the API can price a car without
+ * this page holding the model, and a missing spread has to be an absent sentence rather than
+ * a crash blamed on the reader's input.
+ */
 function bandNote(price) {
+  if (!MODEL) return null;
   const band = MODEL.errorBand(price);
   const half = `half of cars valued near this land within ${pln.format(band.p50_abs_error)}`;
   const most = `nine in ten within ${pln.format(band.p90_abs_error)}`;
+  // The band's own width, said out loud: the top one spans 150 796 to 898 640 PLN, and
+  // "cars valued near this" would otherwise cover a sixfold range without admitting it.
+  const range = `${pln.format(band.from_pln)}–${pln.format(band.to_pln)}`;
   const measured = band.measured
     ? ""
     : " — this valuation is outside the range the model's own errors were measured over, so "
       + "the figures are the nearest band's rather than this one's";
-  return `Out-of-fold error for this price band: ${half}, ${most}${measured}.`;
+  return `Out-of-fold error for valuations of ${range}: ${half}, ${most}${measured}.`;
 }
 
 function renderLive(price) {
+  // The live figure is not announced. The region was written for one answer per submit, and it
+  // now re-renders on every pause in typing — a screen reader would read the whole card back
+  // each time and never drain the queue. The submitted answer and every refusal still are.
+  document.getElementById("result").setAttribute("aria-live", "off");
   renderCard(document.getElementById("result"), "card result prediction",
              { className: "result-label", text: "Valued here, as you type" },
              [element("p", "price", pln.format(price)),
@@ -200,10 +219,11 @@ function renderPrediction(price, asOf, where) {
     ? "Computed by the prediction API, which agrees with the copy running in this page to "
       + "within a grosz — a fixture holds them to it."
     : `Computed here, in your browser, by ${trainedDescription()}`;
-  renderCard(document.getElementById("result"), "card result prediction",
+  const spread = bandNote(price);
+  renderCard(announce(document.getElementById("result")), "card result prediction",
              { className: "result-label", text: "Model prediction" },
              [element("p", "price", pln.format(price)),
-              element("p", "note", bandNote(price)),
+              ...(spread ? [element("p", "note", spread)] : []),
               element("p", "note", `At ${asOf} market prices, which is the vintage of the `
                                    + `data this model was trained on. ${computed}`)]);
 }
@@ -255,16 +275,22 @@ const SLIDER_MILEAGE_MAX = 400_000;
 function coupleSlider(fieldId) {
   const field = document.getElementById(fieldId);
   const slider = document.getElementById(`${fieldId}-slider`);
+  // A range input with no value sits at its own midpoint, so an empty year field would ship
+  // beside a slider pointing at 2002 — a year nobody entered, shown as if someone had. It
+  // stays disabled until the field says what it should point at.
+  const follow = () => {
+    const value = Number(field.value);
+    slider.disabled = field.value.trim() === "" || !Number.isFinite(value);
+    if (!slider.disabled) slider.value = String(value);
+  };
+  follow();
   slider.addEventListener("input", () => {
     field.value = slider.value;
     onFormInput();
   });
-  field.addEventListener("input", () => {
-    const value = Number(field.value);
-    // Out-of-range values are left to validation rather than snapped: silently rewriting what
-    // someone typed is how a form tells you it priced something other than what you asked.
-    if (Number.isFinite(value)) slider.value = String(value);
-  });
+  // Out-of-range values are left to validation rather than snapped: silently rewriting what
+  // someone typed is how a form tells you it priced something other than what you asked.
+  field.addEventListener("input", follow);
 }
 
 function readForm() {
@@ -360,19 +386,35 @@ function refreshLive() {
   drawWhatIf(input);
 }
 
-/** The same car at every age the model was trained on, priced now rather than looked up. */
+/** The same car at every age the data supports, priced now rather than looked up. */
 function drawWhatIf(input) {
-  const oldest = CONFIG.year_max - CONFIG.year_min;
+  // Stops where the report's depreciation curve stops. The model answers for any age, but past
+  // the last bucket the site is willing to publish it is extrapolating: at 33 years and beyond
+  // it returns one flat number, and between 29 and 33 it has the car *gaining* value. Drawn in
+  // the same visual language as a measured chart, that would read as a finding.
+  const oldest = MODEL.ageSupport.max_age;
+  // Encoded once and swept along the age column: 40 re-encodings per keystroke is work the
+  // reader's phone does not need to do for a value that never changes.
+  const row = MODEL.encode(input);
+  const ageColumn = MODEL.columnIndex("age");
   const points = [];
   for (let age = 0; age <= oldest; age += 1) {
-    points.push({ x: age, y: MODEL.predict({ ...input, age }) });
+    row[ageColumn] = age;
+    points.push({ x: age, y: MODEL.predictRow(row) });
   }
   const panel = document.getElementById("whatif");
   panel.hidden = false;
+  document.getElementById("whatif-limit").textContent =
+    `Drawn to ${oldest} years, where the data stops supporting it: older buckets hold under `
+    + `${MODEL.ageSupport.min_bucket_n} adverts each, so the report's own curve drops them too.`;
   drawCurve(document.getElementById("whatif-chart"), points, {
     highlightX: input.age,
     xLabel: "years old",
-    format: (value) => `${Math.round(value / 1000)}k`,
+    // Thousands while the numbers are large enough for it to mean anything; below that the
+    // rounding would print three axis labels reading "0k".
+    format: (value) => (Math.max(...points.map((point) => point.y)) >= 20000
+      ? `${Math.round(value / 1000)}k`
+      : String(Math.round(value))),
   });
 }
 
