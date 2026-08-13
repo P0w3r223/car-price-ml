@@ -1,0 +1,6 @@
+# The published page is compared byte for byte by the CI drift guard, and it is rendered from
+# these aggregates. The build and the export both write LF explicitly so a rebuild matches on
+# any OS; without these lines a Windows checkout converts the committed copies to CRLF, and
+# every local rebuild then reports a stale page for a reason no commit caused.
+docs/index.html text eol=lf
+docs/data/*.json text eol=lf
