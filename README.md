@@ -100,7 +100,7 @@ notebooks/              # EDA + feature engineering
 api/                    # FastAPI service (also serves the web form, same-origin)
 tests/                  # pytest
 docs/data/              # the committed aggregates the published page renders from
-docs/app/               # vanilla-JS valuation form + the model it runs (predict.js, model.json)
+docs/app/               # vanilla-JS valuation form + the model it runs (predict.js, model.json, curve.js)
 docs/adr/               # design decisions, each with the measurements behind it
 docs/research/          # data sources, methodology, temporal recalibration
 ```
@@ -146,6 +146,14 @@ publicly hosted, so `docs/app/model.json` carries the served booster as parallel
 the preprocessing as an ordered plan, and `predict.js` walks it. 1 200 trees, 2.3 MB over the
 wire, no API and no framework. The form says which path answered above the fields and again
 beside the price.
+
+It answers **as you type**, and never with a bare number: every valuation carries the error
+measured for its price band, out-of-fold, at training time. That distinction is not decorative
+— the median absolute error runs from **1 498 PLN** in the cheapest tenth of the market to
+**21 606** in the dearest, so the project's headline 8 612 PLN MAE would overstate the error
+five-fold on a small car and understate it three-fold on a large one. Under the form, the same
+car is priced at every age the model was trained on, redrawn as you drag the year or mileage
+slider — the model's answer for *your* car, not the market's median.
 
 That the two paths are the same model is a checked claim rather than an intention. A golden
 fixture of 53 cars — sampled adverts plus both ends of every bound, one car per province and

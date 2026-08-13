@@ -35,7 +35,7 @@ FORM_CONFIG_SCHEMA = 1
 # The form's own stylesheet: the shared palette and page frame, then what only a form needs.
 # The report is built from the same first two parts, so following its "Try the valuation
 # form" link no longer lands the reader on a differently-coloured site with no dark mode.
-FORM_STYLESHEET_PARTS = ("tokens.css", "base.css", "form.css")
+FORM_STYLESHEET_PARTS = ("tokens.css", "base.css", "chart.css", "form.css")
 
 
 def config_payload() -> dict:

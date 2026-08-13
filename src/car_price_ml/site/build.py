@@ -32,7 +32,7 @@ TEMPLATE_DIR = Path(__file__).parent / "templates"
 
 # The page's stylesheet, assembled rather than stored: the first two parts are also the
 # valuation form's, so the palette and the page frame are defined once for both.
-REPORT_STYLESHEET_PARTS = ("tokens.css", "base.css", "report.css")
+REPORT_STYLESHEET_PARTS = ("tokens.css", "base.css", "chart.css", "report.css")
 
 # How many hyper-parameter configurations the size↔quality sweep scored (ADR 0001). Named
 # here rather than written into the sentence that quotes it: it is the last number on this
