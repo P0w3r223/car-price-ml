@@ -28,8 +28,8 @@ _MIN_YEAR = config.REFERENCE_YEAR - config.AGE_MAX
 class CarFeatures(BaseModel):
     """Validated input for a valuation request."""
 
-    mark: str = Field(max_length=40, examples=["opel"])
-    model: str = Field(max_length=60, examples=["combo"])
+    mark: str = Field(max_length=config.MARK_MAX_LENGTH, examples=["opel"])
+    model: str = Field(max_length=config.MODEL_MAX_LENGTH, examples=["combo"])
 
     @field_validator("mark", "model")
     @classmethod

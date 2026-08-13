@@ -1,28 +1,26 @@
 "use strict";
 
-// These bounds mirror the FastAPI service (api/main.py + config.py). The form is static,
-// so it validates client-side too — but the API remains the source of truth.
-const CONFIG = {
-  fuels: ["CNG", "Diesel", "Electric", "Gasoline", "Hybrid", "LPG"],
-  // Spelled exactly as in config.PROVINCES — correct Polish orthography capitalises only
-  // the first element of a compound name ("Kujawsko-pomorskie"). A test asserts this list
-  // matches the Python vocabulary: the earlier "Kujawsko-Pomorskie" spelling matched no
-  // trained category, so the model priced those two provinces as if no location was given.
-  provinces: [
-    "Dolnośląskie", "Kujawsko-pomorskie", "Lubelskie", "Lubuskie", "Łódzkie",
-    "Małopolskie", "Mazowieckie", "Opolskie", "Podkarpackie", "Podlaskie",
-    "Pomorskie", "Śląskie", "Świętokrzyskie", "Warmińsko-mazurskie",
-    "Wielkopolskie", "Zachodniopomorskie",
-  ],
-  // Mirrors of config.py, asserted equal by a test. The anchor is the source snapshot's
-  // vintage (January 2022), so the form cannot offer model years the model never saw.
-  referenceYear: 2022, // config.REFERENCE_YEAR
-  yearMin: 1982, // REFERENCE_YEAR - AGE_MAX (2022 - 40)
-  yearMax: 2022,
-  mileageMax: 1_000_000,
-  volEngineMax: 8_000,
-  predictPath: "/predict", // same origin: real when served by the API, 404 on Pages -> heuristic
-};
+// Every bound this form validates against is fetched from config.json, which
+// `car_price_ml.site.form` generates from config.py. Nothing is restated here: the one value
+// this file used to spell for itself drifted from the Python by a single capital letter
+// ("Kujawsko-Pomorskie"), and one-hot encoding answers a near-miss with an all-zero row —
+// around 7 % of the market was priced as if the car had no location, and returned with a 200.
+const CONFIG_URL = "config.json";
+// Must match site/form.py FORM_CONFIG_SCHEMA. A payload of any other shape is refused rather
+// than read for the fields that still happen to match.
+const CONFIG_SCHEMA = 1;
+const REQUIRED_LISTS = ["fuels", "provinces"];
+const REQUIRED_NUMBERS = [
+  "reference_year", "year_min", "year_max", "mileage_max", "vol_engine_max",
+  "mark_max_length", "model_max_length",
+];
+
+// Same-origin absolute paths: real when the API serves this directory at its root, absent on
+// the static GitHub Pages copy — which the banner reports before the first submit rather than
+// after it.
+const PREDICT_PATH = "/predict";
+const VOCABULARY_PATH = "/vocabulary";
+const HEALTH_PATH = "/health";
 
 const pln = new Intl.NumberFormat("pl-PL", {
   style: "currency",
@@ -30,30 +28,170 @@ const pln = new Intl.NumberFormat("pl-PL", {
   maximumFractionDigits: 0,
 });
 
+let CONFIG = null;
+// What will answer this form: "model" (a trained artifact is loaded), "no-model" (the service
+// is up but unservable) or "absent" (no API at this origin). Probed at load, and corrected if
+// a submit turns out to disagree with the probe.
+let backend = "absent";
+
+// --- Configuration ----------------------------------------------------------
+
+class ConfigError extends Error {}
+
+async function loadConfig() {
+  let response;
+  try {
+    response = await fetch(CONFIG_URL);
+  } catch (error) {
+    throw new ConfigError(`config.json could not be fetched (${error.message})`);
+  }
+  if (!response.ok) throw new ConfigError(`config.json answered ${response.status}`);
+
+  let payload;
+  try {
+    payload = await response.json();
+  } catch {
+    throw new ConfigError("config.json is not valid JSON");
+  }
+  if (payload.schema !== CONFIG_SCHEMA) {
+    throw new ConfigError(
+      `config.json is schema ${payload.schema}, this form reads ${CONFIG_SCHEMA}`
+    );
+  }
+  // Checked field by field: a payload missing one list would leave that dropdown empty and
+  // its membership test vacuously false, which reads as "nothing is a valid province".
+  for (const key of REQUIRED_LISTS) {
+    if (!Array.isArray(payload[key]) || payload[key].length === 0) {
+      throw new ConfigError(`config.json carries no ${key}`);
+    }
+  }
+  for (const key of REQUIRED_NUMBERS) {
+    if (!Number.isFinite(payload[key])) {
+      throw new ConfigError(`config.json carries no numeric ${key}`);
+    }
+  }
+  if (!payload.electric_fuel) throw new ConfigError("config.json carries no electric_fuel");
+  return payload;
+}
+
+// --- Rendering helpers ------------------------------------------------------
+
+function element(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+// Built as nodes rather than assembled as HTML: `detail` comes from the service, and a
+// valuation form has no business interpreting anything it is told as markup.
+function renderCard(target, className, label, children) {
+  target.hidden = false;
+  target.className = className;
+  target.replaceChildren(element("span", label.className, label.text), ...children);
+}
+
+function renderStatus(kind) {
+  const status = document.getElementById("status");
+  const states = {
+    model: {
+      className: "card status live",
+      label: "Live model",
+      note: `A trained model is answering this form. Prices are ${CONFIG.reference_year} ` +
+            `market prices — the dataset is a single January ${CONFIG.reference_year} ` +
+            `snapshot, so they are not today's.`,
+    },
+    "no-model": {
+      className: "card status offline",
+      label: "No model loaded — answers will be guesses",
+      note: "The prediction API is running but could not load an artifact, so anything you " +
+            "submit is priced by a rough formula in app.js rather than by the model. Train " +
+            "one (python -m car_price_ml.train) and restart the service.",
+    },
+    absent: {
+      className: "card status offline",
+      label: "Static demo — answers will be guesses",
+      note: "No prediction API is reachable from this page, so anything you submit is " +
+            "priced by a rough formula in app.js rather than by the model. Run the service " +
+            "(uvicorn api.main:app) for a real valuation.",
+    },
+  };
+  const state = states[kind];
+  renderCard(status, state.className, { className: "status-label", text: state.label },
+             [element("p", null, state.note)]);
+}
+
+function renderUnavailable(reason) {
+  const status = document.getElementById("status");
+  renderCard(status, "card status broken",
+             { className: "status-label", text: "This form cannot run" },
+             [element("p", null,
+                      `${reason}. It validates against the same vocabularies and bounds the ` +
+                      `model was trained on, and will not fall back to a guess at them.`)]);
+}
+
+function renderProblems(messages) {
+  const list = element("ul", "problems");
+  for (const message of messages) list.appendChild(element("li", null, message));
+  renderCard(document.getElementById("result"), "card result refused",
+             { className: "result-label", text: "Not sent — the input is outside what the "
+                                                + "model can price" },
+             [list]);
+}
+
+function renderPrediction(price, asOf) {
+  renderCard(document.getElementById("result"), "card result prediction",
+             { className: "result-label", text: "Model prediction" },
+             [element("p", "price", pln.format(price)),
+              element("p", "note", `At ${asOf} market prices, which is the vintage of the `
+                                   + `data this model was trained on.`)]);
+}
+
+function renderEstimate(price, note) {
+  renderCard(document.getElementById("result"), "card result estimate",
+             { className: "result-label", text: "Offline estimate — not a model prediction" },
+             [element("p", "price", `≈ ${pln.format(price)}`),
+              element("p", "note", note)]);
+}
+
+// --- The form ---------------------------------------------------------------
+
 function fillSelect(id, values) {
   const select = document.getElementById(id);
   // A disabled, empty placeholder so nothing is pre-selected — the user must choose, and the
   // "Pick a …" validation becomes reachable.
-  const placeholder = document.createElement("option");
+  const placeholder = element("option", null, "Select…");
   placeholder.value = "";
-  placeholder.textContent = "Select…";
   placeholder.disabled = true;
   placeholder.selected = true;
-  select.appendChild(placeholder);
-  for (const value of values) {
-    const option = document.createElement("option");
+  const options = values.map((value) => {
+    const option = element("option", null, value);
     option.value = value;
-    option.textContent = value;
-    select.appendChild(option);
-  }
+    return option;
+  });
+  select.replaceChildren(placeholder, ...options);
+}
+
+// The same bounds the validation below uses, put on the inputs themselves so the browser's
+// own spinners and keyboards stop at them too.
+function applyBounds() {
+  const bound = (id, attributes) => {
+    const input = document.getElementById(id);
+    for (const [name, value] of Object.entries(attributes)) input.setAttribute(name, value);
+  };
+  bound("mark", { maxlength: CONFIG.mark_max_length });
+  bound("model", { maxlength: CONFIG.model_max_length });
+  bound("year", { min: CONFIG.year_min, max: CONFIG.year_max });
+  bound("mileage", { min: 0, max: CONFIG.mileage_max });
+  bound("vol_engine", { min: 0, max: CONFIG.vol_engine_max });
 }
 
 function readForm() {
   const value = (id) => document.getElementById(id).value.trim();
   // Empty -> NaN (not 0): a blank number field must fail validation, not silently mean "0".
   const num = (id) => {
-    const v = value(id);
-    return v === "" ? NaN : Number(v);
+    const raw = value(id);
+    return raw === "" ? NaN : Number(raw);
   };
   return {
     // The dataset spells every make and model in lower case, and the API compares exactly
@@ -70,155 +208,120 @@ function readForm() {
 
 // Returns a list of human-readable problems; empty means the input is valid.
 function validate(car) {
-  const errors = [];
+  const problems = [];
   const isInt = (n) => Number.isInteger(n);
 
-  if (!car.mark) errors.push("Make is required.");
-  else if (car.mark.length > 40) errors.push("Make is too long (max 40 characters).");
-  if (!car.model) errors.push("Model is required.");
-  else if (car.model.length > 60) errors.push("Model is too long (max 60 characters).");
-  if (!CONFIG.fuels.includes(car.fuel)) errors.push("Pick a fuel type.");
+  if (!car.mark) problems.push("Make is required.");
+  else if (car.mark.length > CONFIG.mark_max_length) {
+    problems.push(`Make is too long (max ${CONFIG.mark_max_length} characters).`);
+  }
+  if (!car.model) problems.push("Model is required.");
+  else if (car.model.length > CONFIG.model_max_length) {
+    problems.push(`Model is too long (max ${CONFIG.model_max_length} characters).`);
+  }
+  if (!CONFIG.fuels.includes(car.fuel)) problems.push("Pick a fuel type.");
   // Membership, not just emptiness: the API answers an unknown province with a 422, so the
   // client-side message has to be checking the same thing the server decides on.
-  if (!CONFIG.provinces.includes(car.province)) errors.push("Pick a province.");
-  if (!isInt(car.year) || car.year < CONFIG.yearMin || car.year > CONFIG.yearMax) {
-    errors.push(`Year must be a whole number between ${CONFIG.yearMin} and ${CONFIG.yearMax}.`);
+  if (!CONFIG.provinces.includes(car.province)) problems.push("Pick a province.");
+  if (!isInt(car.year) || car.year < CONFIG.year_min || car.year > CONFIG.year_max) {
+    problems.push(`Year must be a whole number between ${CONFIG.year_min} and `
+                  + `${CONFIG.year_max}.`);
   }
-  if (!isInt(car.mileage) || car.mileage < 0 || car.mileage > CONFIG.mileageMax) {
-    errors.push(`Mileage must be between 0 and ${CONFIG.mileageMax.toLocaleString("en")} km.`);
+  if (!isInt(car.mileage) || car.mileage < 0 || car.mileage > CONFIG.mileage_max) {
+    problems.push(`Mileage must be between 0 and `
+                  + `${CONFIG.mileage_max.toLocaleString("en")} km.`);
   }
-  if (!isInt(car.vol_engine) || car.vol_engine < 0 || car.vol_engine > CONFIG.volEngineMax) {
-    errors.push(`Engine capacity must be between 0 and ${CONFIG.volEngineMax} cm³.`);
-  } else if (car.vol_engine === 0 && car.fuel !== "Electric") {
-    // Mirrors the cleaning rule: combustion cars with no displacement were dropped from
-    // training, so the model has never seen one and the API refuses the request.
-    errors.push("Engine capacity of 0 is only valid for an electric car.");
+  if (!isInt(car.vol_engine) || car.vol_engine < 0 || car.vol_engine > CONFIG.vol_engine_max) {
+    problems.push(`Engine capacity must be between 0 and ${CONFIG.vol_engine_max} cm³.`);
+  } else if (car.vol_engine === 0 && car.fuel !== CONFIG.electric_fuel) {
+    // Mirrors the cleaning rule (data.has_plausible_displacement): combustion cars with no
+    // displacement were dropped from training, so the model has never seen one and the API
+    // refuses the request.
+    problems.push(`Engine capacity of 0 is only valid for ${CONFIG.electric_fuel}.`);
   }
-  return errors;
+  return problems;
 }
 
-// A transparent, rough fallback used only when the ML API is unreachable (e.g. the static
-// GitHub Pages demo). It is NOT the trained model — just a plausible-looking heuristic.
+// A transparent, rough fallback used only when no model is answering. It is NOT the trained
+// model — just a plausible-looking heuristic, labelled as one everywhere it appears.
 function heuristicEstimate(car) {
-  const fuelFactor = { Gasoline: 1.0, Diesel: 1.15, Hybrid: 1.35, Electric: 1.5, LPG: 0.9, CNG: 0.85 };
+  const fuelFactor = {
+    Gasoline: 1.0, Diesel: 1.15, Hybrid: 1.35, Electric: 1.5, LPG: 0.9, CNG: 0.85,
+  };
   let price = 6000 + car.vol_engine * 22;
   price *= fuelFactor[car.fuel] ?? 1.0;
-  const age = CONFIG.referenceYear - car.year;
+  const age = CONFIG.reference_year - car.year;
   price *= Math.pow(0.92, Math.max(0, age)); // ~8% per year
   price *= Math.max(0.25, 1 - car.mileage / 400000); // mileage wear
   return Math.max(2000, Math.round(price));
 }
 
+// --- The service ------------------------------------------------------------
+
 class ValidationError extends Error {}
 
-// Ask the API for a prediction. Resolves to {price} on success. Throws ValidationError on a
-// 422 (server rejected the input); returns null when the API is unreachable or otherwise
-// unavailable, signalling the caller to fall back to the heuristic.
+/** What is answering this form, asked once at load instead of discovered by submitting. */
+async function probeBackend() {
+  let response;
+  try {
+    response = await fetch(HEALTH_PATH);
+  } catch {
+    return "absent";
+  }
+  if (!response.ok) return "absent";
+  const body = await response.json().catch(() => null);
+  // A 200 that is not this API's health payload (a static host answering with a page, a proxy
+  // interstitial) is not evidence of a service — reporting it as one would promise a model.
+  if (!body || typeof body.model_loaded !== "boolean") return "absent";
+  return body.model_loaded ? "model" : "no-model";
+}
+
+/**
+ * Ask the API for a prediction. Resolves to {price, asOf} on success, or {unavailable} when
+ * no model answered. Throws ValidationError on a 422 — the input was refused, and that is an
+ * answer rather than a failure.
+ */
 async function predictViaApi(car) {
   let response;
   try {
-    response = await fetch(CONFIG.predictPath, {
+    response = await fetch(PREDICT_PATH, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(car),
     });
   } catch {
-    return null; // network error — no API here (e.g. the Pages demo)
+    return { unavailable: "absent" }; // network error — no API here (e.g. the Pages demo)
   }
 
   if (response.ok) {
-    const data = await response.json().catch(() => null);
-    if (!data || typeof data.predicted_price_pln !== "number") return null;  // malformed -> fall back
-    return { price: data.predicted_price_pln, asOf: data.valuation_as_of };
+    const body = await response.json().catch(() => null);
+    // Both fields or neither: an undated price is a number the reader would date themselves,
+    // and this market moved after the snapshot the model was trained on.
+    if (!body || typeof body.predicted_price_pln !== "number"
+        || typeof body.valuation_as_of !== "number") {
+      return { unavailable: "absent" };
+    }
+    return { price: body.predicted_price_pln, asOf: body.valuation_as_of };
   }
   if (response.status === 422) {
     const body = await response.json().catch(() => null);
     // FastAPI's own validation errors arrive as a list; ours (unknown make/model) as a string.
     const detail = body && Array.isArray(body.detail)
-      ? body.detail.map((d) => d.msg).join("; ")
+      ? body.detail.map((problem) => problem.msg).join("; ")
       : (body && typeof body.detail === "string" ? body.detail : "the API rejected the input");
     throw new ValidationError(detail);
   }
   // 503 means the service answered and has no model — a deployment fault, not an absent API.
   // Reporting it as "unreachable" once hid a container that could never load its artifact.
-  if (response.status === 503) return { unavailable: "reachable-but-no-model" };
-  return null; // 404, 5xx, ... -> fall back
+  if (response.status === 503) return { unavailable: "no-model" };
+  return { unavailable: "absent" }; // 404, 5xx, … -> no model answered
 }
 
-function renderErrors(messages) {
-  const result = document.getElementById("result");
-  result.hidden = false;
-  const items = messages.map((m) => `<li>${escapeHtml(m)}</li>`).join("");
-  result.innerHTML = `<div class="errors"><strong>Please fix:</strong><ul>${items}</ul></div>`;
-}
-
-function renderPrice(price, source, reason, asOf) {
-  const result = document.getElementById("result");
-  result.hidden = false;
-  const badge = source === "model"
-    ? '<span class="badge model">model prediction</span>'
-    : '<span class="badge offline">offline estimate</span>';
-  // The training data is a single January 2022 snapshot, so the figure is a 2022 price.
-  // Showing it undated would let the reader assume a currency the model cannot support.
-  const dated = asOf ? `<p class="reason">Valued at ${asOf} market prices.</p>` : "";
-  const note = reason ? `<p class="reason">${escapeHtml(reason)}</p>` : "";
-  result.innerHTML = `${badge}<p class="price">${pln.format(price)}</p>${dated}${note}`;
-}
-
-function escapeHtml(text) {
-  return String(text).replace(/[&<>"']/g, (c) =>
-    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])
-  );
-}
-
-async function onSubmit(event) {
-  event.preventDefault();
-  const car = readForm();
-
-  const problems = validate(car);
-  if (problems.length) {
-    renderErrors(problems);
-    return;
-  }
-
-  const button = document.getElementById("submit");
-  button.disabled = true;
-  button.textContent = "Estimating…";
-  try {
-    const prediction = await predictViaApi(car);
-    if (prediction && typeof prediction.price === "number") {
-      renderPrice(prediction.price, "model", null, prediction.asOf);
-    } else {
-      const noModel = prediction && prediction.unavailable === "reachable-but-no-model";
-      renderPrice(
-        heuristicEstimate(car),
-        "offline",
-        noModel
-          ? "The API is running but has no model loaded, so this is a rough offline heuristic — not a prediction. Train one (python -m car_price_ml.train) and restart the service."
-          : "The ML API was not reachable, so this is a rough offline heuristic — not the trained model. Run the API (uvicorn api.main:app) for a real prediction."
-      );
-    }
-  } catch (error) {
-    if (error instanceof ValidationError) {
-      renderErrors([error.message]);
-    } else {
-      renderErrors(["Unexpected error: " + error.message]);
-    }
-  } finally {
-    button.disabled = false;
-    button.textContent = "Estimate price";
-  }
-}
-
-// Offer what the model can actually price. Make and model are free text because the domain
-// lives in the trained artifact, not in this file — so the list is fetched when the API is
-// there, and the inputs simply stay unsuggested when it is not (the Pages demo). The server
-// rejects anything outside the list either way; this only makes the boundary visible before
-// the user submits.
+/** Offer what the model can actually price, when something knows. */
 async function fillVocabularyHints() {
   let vocabulary;
   try {
-    const response = await fetch("/vocabulary");
+    const response = await fetch(VOCABULARY_PATH);
     if (!response.ok) return;
     vocabulary = await response.json();
   } catch {
@@ -235,11 +338,73 @@ async function fillVocabularyHints() {
   }
 }
 
-function init() {
+// --- Wiring -----------------------------------------------------------------
+
+const HEURISTIC_NOTE = {
+  "no-model": "The API is running but has no model loaded, so this number comes from a rough "
+              + "formula in app.js. It carries no accuracy claim.",
+  absent: "No prediction API answered, so this number comes from a rough formula in app.js. "
+          + "It carries no accuracy claim.",
+};
+
+async function onSubmit(event) {
+  event.preventDefault();
+  const car = readForm();
+
+  const problems = validate(car);
+  if (problems.length) {
+    renderProblems(problems);
+    return;
+  }
+
+  const button = document.getElementById("submit");
+  button.disabled = true;
+  button.textContent = "Estimating…";
+  try {
+    const prediction = await predictViaApi(car);
+    if (typeof prediction.price === "number") {
+      renderPrediction(prediction.price, prediction.asOf);
+      if (backend !== "model") {
+        backend = "model";
+        renderStatus(backend);
+      }
+    } else {
+      // What actually happened outranks what the probe found at load: a service that has gone
+      // away since then must change the banner, not just this one answer.
+      if (backend !== prediction.unavailable) {
+        backend = prediction.unavailable;
+        renderStatus(backend);
+      }
+      renderEstimate(heuristicEstimate(car), HEURISTIC_NOTE[backend]);
+    }
+  } catch (error) {
+    if (error instanceof ValidationError) renderProblems([error.message]);
+    else renderProblems([`Unexpected error: ${error.message}`]);
+  } finally {
+    button.disabled = false;
+    button.textContent = "Estimate price";
+  }
+}
+
+async function init() {
+  try {
+    CONFIG = await loadConfig();
+  } catch (error) {
+    // No fallback constants. A form that guessed its own bounds is how the province bug
+    // shipped, and the guess would look exactly like a working form.
+    renderUnavailable(error.message);
+    return;
+  }
+
   fillSelect("fuel", CONFIG.fuels);
   fillSelect("province", CONFIG.provinces);
+  applyBounds();
   document.getElementById("valuation").addEventListener("submit", onSubmit);
-  fillVocabularyHints();
+  document.getElementById("submit").disabled = false;
+
+  backend = await probeBackend();
+  renderStatus(backend);
+  if (backend === "model") await fillVocabularyHints();
 }
 
 document.addEventListener("DOMContentLoaded", init);
