@@ -21,10 +21,10 @@ valuation. Measured, that reading is wrong in both directions:
 
 | predicted price | n | median abs. error | 90th percentile |
 | --- | ---: | ---: | ---: |
-| 2 211 – 12 976 | 11 102 | **1 498** | 4 035 |
+| 2 211 – 12 977 | 11 102 | **1 498** | 4 035 |
 | 24 303 – 31 650 | 11 101 | 2 660 | 7 652 |
-| 70 168 – 94 442 | 11 102 | 6 831 | 20 315 |
-| 150 796 – 898 640 | 11 102 | **21 606** | 72 574 |
+| 70 168 – 94 445 | 11 102 | 6 831 | 20 315 |
+| 150 790 – 898 640 | 11 102 | **21 606** | 72 574 |
 
 A single MAE flattens a **14×** range. On a 12 000 PLN car it overstates the error by more
 than five times; on a 200 000 PLN one it understates it by nearly three.
@@ -61,8 +61,9 @@ is small everywhere except the top band (+2 204 PLN), which is worth knowing abo
 ### 2. No valuation is shown without it
 
 The exported payload carries the bands (schema 3, which also carries the age range the data
-supports), `predict.js` refuses a payload without them, and every price the form shows — live or submitted, from the page or from the API —
-comes with the measured spread for its band. Outside the range the out-of-fold predictions
+supports) and `predict.js` refuses a payload without them, so every price the form shows —
+live or submitted, from the page or from the API — comes with the measured spread for its band
+and with that band's own range printed beside it. Outside the range the out-of-fold predictions
 covered, the nearest band is used **and labelled as not measured for this price**, rather
 than being presented as if it were.
 
@@ -84,13 +85,16 @@ quietly becoming chatty.
 The panel under the form prices the car currently in the form at every age **the data
 supports** — 26 predictions, redrawn on every change. It stops at 25 years because that is
 where the report's own depreciation curve stops, by the same `n ≥ 100` rule, now stated once
-in `site/__init__.py` and read by both. Drawn to 40 the curve was a claim: past 33 the model
-returns one flat number (the trees run out of splits) and between 29 and 33 it has the car
-*gaining* value — in the same visual language as a measured chart, on the same site. It is deliberately not the report's
-depreciation curve: that one is the market's median advert price by age, a description of the
-data, while this one is the model's answer for *this* car with everything else held. Drawn by
-`docs/app/curve.js` with the class names `charts.py` uses, so the two halves of the site are
-one visual system and the stylesheet is shared rather than restated (`assets/chart.css`).
+in `site/__init__.py` and read by both. Drawn to 40, as the first version was, the curve made a
+claim it could not support: past 33 the model returns one flat number (the trees run out of
+splits) and between 29 and 33 it has the car *gaining* value — rendered in the same visual
+language as a measured chart, on the same site.
+
+It is deliberately not the report's depreciation curve: that one is the market's median advert
+price by age, a description of the data, while this one is the model's answer for *this* car
+with everything else held. Drawn by `docs/app/curve.js` with the class names `charts.py` uses,
+so the two halves of the site are one visual system and the stylesheet is shared rather than
+restated (`assets/chart.css`).
 
 The y axis starts at zero. A truncated axis exaggerates the fall, and this curve is read by
 someone deciding what their car is worth.
