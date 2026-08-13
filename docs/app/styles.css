@@ -265,13 +265,10 @@ button:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
 .result.refused .result-label { color: var(--danger); }
 .result.pending .result-label { color: var(--muted); }
 
-/* The figure changes as the reader types, so it moves rather than jumping — but only for
-   readers who have not asked the system for less motion. */
-.price { transition: color 120ms ease-out; }
-
-@media (prefers-reduced-motion: reduce) {
-  .price { transition: none; }
-}
+/* No transition on the figure. It is replaced rather than updated on every keystroke, so a
+   transition would never run — and a rule that cannot fire is worse than none: it reads as a
+   considered choice about motion while doing nothing. The live update is a text change with no
+   movement, which is what `prefers-reduced-motion` would have asked for anyway. */
 
 .price {
   font-size: 2rem;
