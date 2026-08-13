@@ -11,7 +11,10 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
+import subprocess
 
+import pytest
 from fastapi.testclient import TestClient
 
 from api.main import app
@@ -176,6 +179,26 @@ def test_the_browsers_spelling_rule_still_matches_the_pythons():
             f"{value!r} is not what the API would normalise it to, so the browser's "
             f"lower-casing and the Python rule no longer agree"
         )
+
+
+@pytest.mark.skipif(shutil.which("node") is None,
+                    reason="needs node to parse the form's scripts — installed in CI")
+@pytest.mark.parametrize("script", sorted(path.name for path in config.SITE_APP_DIR.glob("*.js")))
+def test_every_script_the_page_loads_parses(script):
+    """A syntax error in these files is invisible to everything else in this repository.
+
+    The parity runner requires `predict.js`, so that one is exercised — but `app.js` and
+    `curve.js` are only ever loaded by a browser, and nothing here opens one. A typo in either
+    would ship a page that renders the form and then does nothing at all, and every test would
+    stay green. `node --check` parses without executing, which is all that is needed: `app.js`
+    calls `document` at load and could not be imported.
+    """
+    finished = subprocess.run(
+        ["node", "--check", str(config.SITE_APP_DIR / script)],
+        capture_output=True, text=True, timeout=60, check=False,
+    )
+
+    assert finished.returncode == 0, f"{script} does not parse:\n{finished.stderr}"
 
 
 def test_the_model_and_its_runtime_are_served():

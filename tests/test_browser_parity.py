@@ -137,7 +137,7 @@ def test_the_pipeline_still_prices_the_fixture_as_recorded(fixture):
     predicted = fitted.predict(frame)
 
     worst = max(abs(float(price) - case["expected_pln"])
-                for price, case in zip(predicted, cases))
+                for price, case in zip(predicted, cases, strict=True))
     assert worst <= fixture["tolerance_pln"], (
         f"the pipeline has moved {worst:,.4f} PLN away from the fixture — re-run "
         f"`python -m car_price_ml.site.browser_model`"
