@@ -31,6 +31,11 @@ from car_price_ml.site import AGGREGATE_SCHEMA, charts
 TEMPLATE_DIR = Path(__file__).parent / "templates"
 ASSET_DIR = Path(__file__).parent / "assets"
 
+# How many hyper-parameter configurations the size↔quality sweep scored (ADR 0001). Named
+# here rather than written into the sentence that quotes it: it is the last number on this
+# page that a re-run could leave stale without anything noticing.
+SEARCHED_CONFIGURATIONS = 16
+
 # The rules the page shows verbatim instead of describing. This is the project's answer to
 # "trust me": each one is read out of the module it lives in at build time, so the page
 # cannot drift from the behaviour it claims — a paraphrase can go stale, a quotation cannot.
@@ -138,7 +143,15 @@ def _accuracy_verdict(metrics: dict) -> str:
     """
     served = metrics["served_model"]
     ranked = sorted(metrics["bakeoff"].items(), key=lambda kv: kv[1]["mae"])
-    if len(ranked) < 2 or ranked[0][0] != served:
+    if len(ranked) < 2:
+        # Folded into the "did not win" branch, this rendered "X is served although it did
+        # not win — the winner was X": a confident false statement about the served model,
+        # which is the worst outcome available on this page.
+        return (
+            f"Only {served} was scored, so there is no comparison to read here — the "
+            f"figure above is one measurement, not a ranking."
+        )
+    if ranked[0][0] != served:
         # A pinned model that lost its own bake-off. `train.py` logs that loudly; the page
         # says it plainly rather than dressing it up as a result.
         return (
@@ -158,9 +171,10 @@ def _accuracy_verdict(metrics: dict) -> str:
     return (
         f"The {_thousands(gap)} PLN lead over {rival} clears the folds' combined spread "
         f"({_thousands(combined)} PLN), so the ranking is not fold noise. It is still the "
-        f"best of sixteen configurations scored on the same cross-validation, which makes "
-        f"the winner's own score a little optimistic — so the decision to serve it rests on "
-        f"the size difference, which selection noise cannot touch."
+        f"best of {SEARCHED_CONFIGURATIONS} configurations scored on the same "
+        f"cross-validation, which makes the winner's own score a little optimistic — so the "
+        f"decision to serve it rests on the size difference, which selection noise cannot "
+        f"touch."
     )
 
 
@@ -218,8 +232,9 @@ def _assert_figures_are_complete(figures: dict[str, str]) -> None:
             continue  # nothing to plot, and the page says so
         if 'class="bar-value"' not in markup:
             raise charts.IncompleteFigure(f"chart {name!r} would publish values without labels")
-    bakeoff = figures["bakeoff"]
-    if 'class="empty"' not in bakeoff and 'class="spread"' not in bakeoff:
+    # Unconditional: `bakeoff_chart` has no empty fallback to exempt, because a page without
+    # the comparison is a different claim rather than a smaller one.
+    if 'class="spread"' not in figures["bakeoff"]:
         raise charts.IncompleteFigure("the model comparison would publish MAE without its spread")
 
 

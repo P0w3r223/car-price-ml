@@ -90,8 +90,11 @@ def bakeoff_chart(bars: list[SpreadBar], title: str = "Cross-validated error by 
     question for the data, so the sentence beside the chart is derived from it
     (``build._accuracy_verdict``) rather than written here.
     """
+    # No "no data" fallback here, unlike the other two charts. This one carries the decision
+    # the page is built around; a page that renders without it is not a lesser page, it is a
+    # different claim. The build stops instead.
     if not bars:
-        return '<p class="empty">No cross-validation metrics in the artifact.</p>'
+        raise IncompleteFigure("no cross-validated metrics to compare")
     missing = [bar.label for bar in bars if bar.spread is None]
     if missing:
         raise IncompleteFigure(f"MAE without a fold spread for {missing}")

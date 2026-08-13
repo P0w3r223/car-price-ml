@@ -208,11 +208,11 @@ def _refusals(fitted, vocabulary: dict[str, list[str]]) -> list[dict]:
     # The same make spelled the way a human writes it. Casefolding is the fix; without it
     # "Opel" is simply an unknown category, priced at that same global mean.
     capitalised = _predict(fitted, mark="Opel")
-    # The normalisation the API applies, executed rather than described — the province probe
-    # below already calls its rule, and a claim that only this one asserts would keep
-    # reading "normalised and priced" the day the casefold regressed.
-    normalised = "Opel".strip().casefold()
-    if normalised not in vocabulary["mark"]:
+    # The rule the API applies, called rather than re-implemented. A hand-copied
+    # `.casefold()` here would keep publishing "normalised and priced" the day the service's
+    # own normalisation changed — which is the drift this whole page exists to prevent.
+    normalised = data.canonical_mark_or_model("Opel")
+    if normalised is None or normalised not in vocabulary["mark"]:
         raise ExportError(
             f"'Opel' no longer normalises onto a known make ({normalised!r} is not in the "
             f"artifact's vocabulary) — the page claims it does"
@@ -325,11 +325,22 @@ def export(out_dir: Path | None = None) -> list[Path]:
     # disk. `load_model` checks the feature spec, the age anchor and the vocabularies, but
     # not which rows a model saw, so the two could differ with nothing looking wrong.
     fitted = bundle["model"]
+    _require_stamps(metadata)
+
     df = data.load_clean()
     x, _ = features.prepare(df)
     vocabulary = metadata["vocabulary"]
 
-    _require_stamps(metadata)
+    # The page dates and sizes the artifact while measuring its behaviour against the dataset
+    # as it cleans *today*. Those are two different things the moment either moves, and the
+    # result would be one page describing two datasets with nothing looking wrong. The row
+    # count is the cheapest thing that notices.
+    if metadata["n_train"] != len(x):
+        raise ExportError(
+            f"the artifact was fit on {metadata['n_train']:,} rows but the dataset now "
+            f"cleans to {len(x):,} — the page would date and size one model while measuring "
+            f"another. Retrain with `python -m car_price_ml.train`."
+        )
 
     metrics = {
         "schema": AGGREGATE_SCHEMA,

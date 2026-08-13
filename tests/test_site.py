@@ -100,6 +100,16 @@ def test_a_lead_clearing_the_combined_spread_is_not_called_a_tie():
     assert "186" in verdict and "108" in verdict
 
 
+def test_a_single_scored_model_is_not_reported_as_losing_to_itself():
+    """Folded into the "did not win" branch this read "X is served although it did not win
+    — the winner was X", which is a confident false statement about the served model."""
+    verdict = build._accuracy_verdict(_metrics(
+        "LightGBM", {"LightGBM": _scored(8_612.2, 71.5)}, {},
+    ))
+    assert "did not win" not in verdict
+    assert "no comparison" in verdict
+
+
 def test_the_verdict_says_so_when_the_served_model_lost_its_own_bakeoff():
     verdict = build._accuracy_verdict(_metrics(
         "RandomForest",
@@ -110,6 +120,13 @@ def test_the_verdict_says_so_when_the_served_model_lost_its_own_bakeoff():
 
 
 # --- a number without its uncertainty is not publishable ---------------------------------
+
+def test_a_comparison_with_nothing_to_compare_fails_the_build():
+    """No "no data" fallback for this one: a page without the comparison it is built around
+    is a different claim, not a smaller one."""
+    with pytest.raises(charts.IncompleteFigure):
+        charts.bakeoff_chart([])
+
 
 def test_a_mae_without_its_fold_spread_fails_the_build():
     with pytest.raises(charts.IncompleteFigure):
@@ -223,6 +240,53 @@ needs_artifact = pytest.mark.skipif(
     not (config.MODELS_DIR / model_module.MODEL_FILENAME).is_file(),
     reason="no trained artifact — run `python -m car_price_ml.train`",
 )
+
+
+@needs_artifact
+def test_the_export_explains_the_served_artifact_rather_than_a_fresh_fit(monkeypatch, tmp_path):
+    """The bug this guards against published behaviour measured on a model nobody serves,
+    while the size and date columns beside it vouched for the file on disk — and the page
+    looked entirely normal. Re-inserting the refit left every other test green, so the only
+    way to hold this is to make training unreachable and require the export to succeed.
+    """
+    def refuse(*args, **kwargs):
+        raise AssertionError("the export refitted the model instead of using the artifact")
+
+    monkeypatch.setattr(export.model_module, "train", refuse)
+    written = export.export(out_dir=tmp_path)
+    assert {path.name for path in written} == {
+        "metrics.json", "drivers.json", "depreciation.json", "refusals.json",
+    }
+
+
+@needs_artifact
+def test_the_export_refuses_when_the_data_no_longer_matches_the_artifact(monkeypatch, tmp_path):
+    """The artifact is dated and sized from its own metadata while behaviour is measured on
+    today's data. Those describe two models the moment either moves."""
+    monkeypatch.setattr(export.data, "load_clean", lambda *args, **kwargs: _one_row_frame())
+    with pytest.raises(export.ExportError, match="cleans to"):
+        export.export(out_dir=tmp_path)
+
+
+def test_an_unrelated_crash_is_not_published_as_proof_the_domain_is_closed():
+    """The refusal table's right-hand column is evidence. A typo or a dtype error must not
+    render there as "the encoder raises TypeError" beside a claim that the guard works.
+    """
+    class OnlyBreaksOnPetrol:
+        def predict(self, frame):
+            if frame["fuel"].iloc[0] == "Petrol":
+                raise ValueError("something else went wrong entirely")
+            return [35_000.0]
+
+    with pytest.raises(export.ExportError, match="does not name the value"):
+        export._refusals(OnlyBreaksOnPetrol(), {"mark": ["opel"], "fuel": [], "province": []})
+
+
+def _one_row_frame() -> pd.DataFrame:
+    return pd.DataFrame([{
+        "mark": "opel", "model": "combo", "fuel": "Diesel", "province": "Mazowieckie",
+        "age": 7, "mileage": 139_568, "vol_engine": 1_248, config.TARGET: 35_900.0,
+    }])
 
 
 @needs_artifact
