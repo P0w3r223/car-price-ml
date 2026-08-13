@@ -167,8 +167,9 @@ def _require_known(field: str, value: str) -> None:
 
     Unlike the one-hot columns, an unseen category here does not raise inside the pipeline —
     ``TargetEncoder`` substitutes the global target mean, so an unknown car comes back as a
-    confident, entirely fictional price. Measured on the served artifact, "Ferrari"/"f40"
-    and "zzzz"/"qqqq" both returned 33 282 PLN.
+    confident, entirely fictional price. Measured on the served artifact and republished with
+    every export (``docs/data/refusals.json``), "ferrari"/"f40" and "zzzz"/"qqqq" both return
+    the same number — 34 093 PLN at the time of writing.
     """
     known = _state["vocabulary"].get(field)
     if not known:

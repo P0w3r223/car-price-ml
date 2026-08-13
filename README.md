@@ -18,9 +18,10 @@ substituted with something plausible.
 - An unseen make reaches `TargetEncoder`, which answers with the **global target mean**. So
   `ferrari`/`f40` and `zzzz`/`qqqq` came back as the same price — 34 093 PLN, with a 200.
 - An unseen province reaches a one-hot encoder, which emits an **all-zero row**. The web form
-  sent `Kujawsko-Pomorskie` where the data spells it `Kujawsko-pomorskie`, so ~7 % of the
-  market was valued as if the car had no location (measured: 1 376 PLN mean deviation, p95
-  6 344, max 42 533).
+  sent `Kujawsko-Pomorskie` and `Warmińsko-Mazurskie` where the data spells them
+  `Kujawsko-pomorskie` and `Warmińsko-mazurskie` — 4.5 % and 2.5 % of rows, so ~7 % of the
+  market was valued as if the car had no location at all (re-priced over 400 of those
+  adverts: 1 376 PLN mean deviation, p95 6 344, max 42 533).
 - A diesel with `vol_engine = 0` was priced **11 % above** the same car with an engine,
   because zero displacement in this dataset means "missing" — except on an EV, where it is a
   fact.
@@ -32,16 +33,19 @@ and the artifact carries its own contract — feature spec, age anchor, vocabula
 different word is refused. Those are not the same thing.
 
 The [published page](https://p0w3r223.github.io/car-price-ml/) leads with that table, and
-every "without the guard" number in it is produced by **running the pipeline with the guard
-removed** at export time — so the table cannot outlive the guards it documents.
+every price in its "without the guard" column is produced by **running the pipeline with the
+guard removed** at export time — so those prices cannot outlive the guards they document. (The
+province row is the exception, and the only one: its domain now raises before a price exists,
+so that cell records what shipped rather than what the export can still measure.)
 
 ## What it does
 
 1. **Data** — an open Kaggle dataset of ~118k Polish used-car adverts (Otomoto-sourced,
-   **CC0**), cleaned with documented domain rules: 9.8 % exact duplicate adverts removed
-   (with shuffled k-fold, the same advert otherwise lands in train *and* test), combustion
-   rows with no displacement dropped while EVs are kept, adverts from outside the 16 Polish
-   provinces dropped. 117 927 → **111 018 rows**.
+   **CC0**), cleaned with documented domain rules. 117 927 → **111 018 rows**: 44 adverts from
+   outside the 16 Polish provinces, **6 470 repeated adverts** (9.8 % of rows sit in exact
+   duplicate groups, and with shuffled k-fold the same advert otherwise lands in train *and*
+   test), 65 rows outside the price/mileage/age bounds, and 330 combustion cars with no
+   displacement — while EVs, for which zero displacement is a fact, are kept.
 2. **Feature engineering** — `age` derived from a fixed anchor (the snapshot's own vintage,
    not "today"), out-of-fold **target encoding** for high-cardinality make/model, one-hot over
    **declared** domains for the rest; **log-price** target, inverted before every metric.
@@ -94,7 +98,7 @@ src/car_price_ml/       # config, data, features, model, train, figures
 src/car_price_ml/site/  # export the page's numbers, then render the page and the form's inputs
 notebooks/              # EDA + feature engineering
 api/                    # FastAPI service (also serves the web form, same-origin)
-tests/                  # pytest — 131 tests
+tests/                  # pytest
 docs/data/              # the committed aggregates the published page renders from
 docs/app/               # vanilla-JS valuation form; config.json + styles.css are generated
 docs/adr/               # design decisions, each with the measurements behind it
@@ -145,6 +149,12 @@ the service at load and reports which of three things is true (a model is answer
 service is up with no model, or no API is reachable). A heuristic answer is then also shaped
 differently from a prediction — dashed border, lighter, approximate figure — rather than
 carrying a differently-coloured badge on the same card.
+
+One caveat the headline of this README does not cover: the heuristic knows nothing about makes
+and models, and the static demo has no vocabulary to check them against — only the API does.
+So on Pages an unknown make still produces a (labelled) estimate, where the service would
+answer `422`. Refusing an unknown car is a property of the model's boundary, not of the
+fallback that stands in for it.
 
 ## Methodology notes
 
