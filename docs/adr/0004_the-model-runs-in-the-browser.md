@@ -68,6 +68,16 @@ Measured over 200 adverts:
 Six decimals was the obvious choice and would have put a visible złoty of drift between the
 page and the API. The extra 240 KB buys a parity claim that needs no qualification.
 
+A review of this ADR pointed out that the two halves of the table fail differently, and that
+only one of them can be bounded by sampling. A rounded **leaf** costs a little accuracy, which
+200 adverts can measure. A rounded **threshold** costs either nothing or an entire branch, and
+a sample can only report that it did not happen to hit one — the reachable domain is finite,
+so the check is now exact instead: for all 151 200 splits, against every value each column can
+take (351 encoded values, `{0, 1}` per one-hot slot, whole numbers between the declared bounds
+for `age`/`mileage`/`vol_engine`), no reachable value falls between a threshold and its rounded
+copy. Largest shift any threshold takes: 4.97e-07. The export runs this before writing, so the
+guarantee survives a retrain rather than describing one artifact.
+
 ### 4. One fixture, three implementations
 
 The Python pipeline, the exported payload and `docs/app/predict.js` are three paths from a car
@@ -125,7 +135,12 @@ The fixture pins the three implementations to each other, but nothing pins `mode
 artifact on disk except the export command: an artifact retrained without re-running the export
 leaves a stale model in the page and a stale fixture agreeing with it. The pipeline leg of the
 parity test is what notices — it re-prices the fixture through the *current* artifact — so the
-failure is loud, but only for someone who runs the tests. This is the same shape as the
+failure is loud, but only for someone who has the artifact, which CI does not. What CI *can*
+check is that the two published halves describe one model: `model.json` and `docs/data/
+metrics.json` must agree on the served model, its training date and its row count, and a test
+compares those committed files without needing either artifact or dataset. That closes the
+half of the risk where the page's headline would describe one model while the form beside it
+announced another. This is the same shape as the
 aggregates' residual risk in ADR 0002, and it has the same real fix: running the export
 somewhere that has the artifact.
 
