@@ -8,6 +8,7 @@ model. A test against a synthetic fixture would verify the templating and miss t
 from __future__ import annotations
 
 import json
+import re
 
 import pandas as pd
 import pytest
@@ -150,6 +151,40 @@ def test_a_chart_without_value_labels_fails_the_build():
             "bakeoff": '<svg><line class="spread"></line></svg>',
             "drivers": "<svg><rect></rect></svg>",
         })
+
+
+# --- the depreciation curve is readable in the middle, not only at its ends --------------
+
+def _curve() -> list[charts.Point]:
+    return [charts.Point(x=age, y=160_000 - age * 6_000, n=1_000 + age) for age in range(26)]
+
+
+def test_the_curve_labels_every_fifth_year_with_its_median_and_its_n():
+    """Labelling only the two ends left the whole middle unreadable: a reader could see that
+    a car loses value quickly and could not tell what a ten-year-old one costs."""
+    svg = charts.curve_chart(_curve(), "Median advert price by age", "years old", "PLN")
+    labels = re.findall(r'class="bar-value"[^>]*>([^<]*)</text>', svg)
+    assert len(labels) == 6  # ages 0, 5, 10, 15, 20, 25
+    assert all("PLN" in label for label in labels)
+    # Every labelled point states the adverts its median rests on, under the age it belongs
+    # to — the oldest bucket and the five-year-old one are not equally solid.
+    assert svg.count("n=") == len(labels)
+
+
+def test_the_curve_carries_a_scale_on_both_axes():
+    svg = charts.curve_chart(_curve(), "Median advert price by age", "years old", "PLN")
+    assert svg.count('class="grid"') >= 3
+    ticks = re.findall(r'class="axis"[^>]*text-anchor="end">([^<]*)</text>', svg)
+    assert "0" in ticks
+    assert any(tick.replace(" ", "").replace(" ", "").isdigit() and tick != "0"
+               for tick in ticks)
+
+
+def test_axis_ticks_are_round_numbers_a_reader_recognises():
+    """Dividing the range evenly puts gridlines at 41 574 PLN, which is worse than none."""
+    assert charts._nice_step(166_295, 4) == 50_000
+    assert charts._nice_step(9.5, 4) == 2.5
+    assert charts._nice_step(0, 4) == 1.0
 
 
 # --- the page against the code it describes ----------------------------------------------
