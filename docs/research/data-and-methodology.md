@@ -2,7 +2,7 @@
 
 Date: 2026-07-17
 Status: accepted
-Author: P0w3r223 + Claude
+Author: P0w3r223
 Related to: project A3 (used-car price model)
 
 ---

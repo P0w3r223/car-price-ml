@@ -25,9 +25,8 @@ _PAD = 12
 _VALUE_ROOM = 210  # the value label sits outside the bar, and it is a long one here
 
 # Geometry of the depreciation curve, which is plotted rather than laid out in rows. The
-# baseline sits well above the bottom edge: two rows of text hang under it, the age and the
-# adverts that age's median rests on.
-_CURVE_HEIGHT = 288
+# baseline leaves room under it for the age ticks and the axis label.
+_CURVE_HEIGHT = 266
 _CURVE_LEFT = 86
 _CURVE_RIGHT = 30
 _CURVE_TOP = 30
@@ -198,14 +197,18 @@ def curve_chart(
     phone.
 
     Both axes carry a scale, and every ``tick_every`` years the point carries its exact
-    median with the adverts behind it. Labelling only the two ends — which is how this
-    started — left the whole middle of the curve unreadable: a reader could see that a car
-    loses value quickly and could not tell what a ten-year-old one costs, which is the
-    question the chart is on the page to answer. Not every point is labelled either; that
-    would be a table drawn as a chart, and the table would be 26 rows long.
+    median. Labelling only the two ends — which is how this started — left the whole middle
+    of the curve unreadable: a reader could see that a car loses value quickly and could not
+    tell what a ten-year-old one costs, which is the question the chart is on the page to
+    answer. Not every point is labelled either; that would be a table drawn as a chart, and
+    the table would be 26 rows long.
 
-    Buckets are dropped by the caller before they get here, and the caller refuses a gap in
-    the middle, so the line never bridges an age nobody measured.
+    The bucket sizes are deliberately not drawn. They were, under each tick, and the row of
+    ``n=`` cluttered the axis for a number nobody reads off a curve. The size rule the points
+    obey is stated once in the caption instead: buckets under the threshold are dropped, and
+    the caller refuses to publish a curve that would bridge a dropped one — so no point on
+    this line rests on too few adverts, which is the guarantee a per-point count was there to
+    give.
     """
     if not points:
         return '<p class="empty">No cleaned adverts to summarise.</p>'
@@ -274,11 +277,6 @@ def curve_chart(
             f"{_thousands(point.y)} PLN</text>"
             f'<text class="axis" x="{x:.1f}" y="{_CURVE_BASELINE + 18:.1f}" '
             f'text-anchor="middle">{_thousands(point.x)}</text>'
-            # The `n` belongs under the value it qualifies, not in a caption the reader has
-            # to hold in their head: the oldest bucket's median rests on 144 adverts and the
-            # five-year-old one on 8 437, and those two medians are not equally solid.
-            f'<text class="axis" x="{x:.1f}" y="{_CURVE_BASELINE + 32:.1f}" '
-            f'text-anchor="middle">n={_thousands(point.n)}</text>'
         )
 
     parts.append(

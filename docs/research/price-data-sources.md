@@ -2,7 +2,7 @@
 
 Date: 2026-08-12
 Status: accepted
-Author: P0w3r223 + Claude
+Author: P0w3r223
 Related to: [ADR 0001](../adr/0001_scope-and-site-expansion.md) (W3, W4),
 [data-and-methodology.md](data-and-methodology.md)
 
