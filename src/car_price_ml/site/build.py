@@ -274,7 +274,6 @@ def gather(data_dir: Path | None = None) -> dict:
         "charts": {name: Markup(markup) for name, markup in figures.items()},
         "drivers": drivers,
         "depreciation": depreciation,
-        "thinnest_bucket": min((row["n"] for row in buckets), default=0),
         "oldest_bucket": max((row["age"] for row in buckets), default=0),
         "refusals": refusals,
         "provinces": list(config.PROVINCES),

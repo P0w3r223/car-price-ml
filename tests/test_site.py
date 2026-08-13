@@ -159,16 +159,21 @@ def _curve() -> list[charts.Point]:
     return [charts.Point(x=age, y=160_000 - age * 6_000, n=1_000 + age) for age in range(26)]
 
 
-def test_the_curve_labels_every_fifth_year_with_its_median_and_its_n():
+def test_the_curve_labels_every_fifth_year_with_its_median():
     """Labelling only the two ends left the whole middle unreadable: a reader could see that
     a car loses value quickly and could not tell what a ten-year-old one costs."""
     svg = charts.curve_chart(_curve(), "Median advert price by age", "years old", "PLN")
     labels = re.findall(r'class="bar-value"[^>]*>([^<]*)</text>', svg)
     assert len(labels) == 6  # ages 0, 5, 10, 15, 20, 25
     assert all("PLN" in label for label in labels)
-    # Every labelled point states the adverts its median rests on, under the age it belongs
-    # to — the oldest bucket and the five-year-old one are not equally solid.
-    assert svg.count("n=") == len(labels)
+
+
+def test_the_curve_does_not_print_bucket_sizes_on_the_axis():
+    """The size rule lives in the caption. What guarantees no point rests on too few adverts
+    is the export refusing a dropped bucket inside the range, not a number under each tick.
+    """
+    svg = charts.curve_chart(_curve(), "Median advert price by age", "years old", "PLN")
+    assert "n=" not in svg
 
 
 def test_the_curve_carries_a_scale_on_both_axes():
