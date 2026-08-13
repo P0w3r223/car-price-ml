@@ -253,8 +253,16 @@ function heuristicEstimate(car) {
   const fuelFactor = {
     Gasoline: 1.0, Diesel: 1.15, Hybrid: 1.35, Electric: 1.5, LPG: 0.9, CNG: 0.85,
   };
+  const factor = fuelFactor[car.fuel];
+  // A fuel this table does not know is refused rather than priced as petrol. The table is
+  // the heuristic's own invention, so it is the one place a config offering a seventh fuel
+  // would otherwise be answered with a silent default — and a labelled guess is still a
+  // number the reader takes away.
+  if (factor === undefined) {
+    throw new Error(`the offline heuristic has no factor for ${car.fuel}`);
+  }
   let price = 6000 + car.vol_engine * 22;
-  price *= fuelFactor[car.fuel] ?? 1.0;
+  price *= factor;
   const age = CONFIG.reference_year - car.year;
   price *= Math.pow(0.92, Math.max(0, age)); // ~8% per year
   price *= Math.max(0.25, 1 - car.mileage / 400000); // mileage wear
@@ -265,11 +273,25 @@ function heuristicEstimate(car) {
 
 class ValidationError extends Error {}
 
+// How long the probe below may take before the form stops waiting for it. Undefined where
+// AbortSignal.timeout is unavailable, which leaves the older behaviour rather than aborting
+// the probe outright and reporting a live service as absent.
+const PROBE_TIMEOUT_MS = 3000;
+
+function probeTimeout() {
+  return typeof AbortSignal?.timeout === "function"
+    ? AbortSignal.timeout(PROBE_TIMEOUT_MS)
+    : undefined;
+}
+
 /** What is answering this form, asked once at load instead of discovered by submitting. */
 async function probeBackend() {
   let response;
   try {
-    response = await fetch(HEALTH_PATH);
+    // Bounded: the submit button waits for this answer, and a host that accepts the
+    // connection without ever replying would otherwise hold the form shut for good — when it
+    // could have said "no API answered" and gone on validating.
+    response = await fetch(HEALTH_PATH, { signal: probeTimeout() });
   } catch {
     return "absent";
   }
