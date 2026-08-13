@@ -44,6 +44,15 @@ function checkPayload(payload) {
     if (!STEP_KINDS.includes(step.kind)) {
       throw new ModelError(`model.json plan contains an unknown step kind: ${JSON.stringify(step.kind)}`);
     }
+    if (!step.field) throw new ModelError(`model.json has a plan step with no field`);
+    // Checked here so the column count below is arithmetic on known shapes rather than a
+    // TypeError from inside it.
+    if (step.kind === "one_hot" && !Array.isArray(step.categories)) {
+      throw new ModelError(`model.json's one-hot step for ${step.field} carries no categories`);
+    }
+    if (step.kind === "target_encode" && (!step.map || typeof step.map !== "object")) {
+      throw new ModelError(`model.json's encoding step for ${step.field} carries no map`);
+    }
   }
   const trees = payload.trees;
   for (const key of ["feature", "threshold", "left", "right", "value", "roots"]) {
@@ -54,6 +63,39 @@ function checkPayload(payload) {
       || trees.value.length !== n) {
     throw new ModelError("model.json's tree arrays have different lengths");
   }
+  if (trees.roots.length === 0) {
+    throw new ModelError("model.json carries no trees — every car would price at expm1(0)");
+  }
+  // Index ranges, not just array shapes. This is the one place a malformed payload turns into
+  // a number instead of an exception: `row[27]` is `undefined` in JavaScript and
+  // `undefined <= threshold` is false, so an out-of-range feature index would quietly take the
+  // right branch of every node it appears in and return a confident price. An out-of-range
+  // child index is worse — the walk below would spin on `undefined` forever. The Python twin
+  // raises IndexError on both, and this file claims the two runtimes agree.
+  const columns = countColumns(payload.plan);
+  for (let i = 0; i < n; i += 1) {
+    if (trees.feature[i] === LEAF) continue;
+    if (trees.feature[i] < 0 || trees.feature[i] >= columns) {
+      throw new ModelError(`model.json splits on column ${trees.feature[i]}, and the plan produces ${columns}`);
+    }
+    for (const side of [trees.left[i], trees.right[i]]) {
+      if (!Number.isInteger(side) || side < 0 || side >= n) {
+        throw new ModelError(`model.json has a child index (${side}) outside its ${n} nodes`);
+      }
+    }
+  }
+  for (const root of trees.roots) {
+    if (!Number.isInteger(root) || root < 0 || root >= n) {
+      throw new ModelError(`model.json has a root index (${root}) outside its ${n} nodes`);
+    }
+  }
+}
+
+/** How many columns the plan produces — the width the trees may index into. */
+function countColumns(plan) {
+  return plan.reduce(
+    (total, step) => total + (step.kind === "one_hot" ? step.categories.length : 1), 0
+  );
 }
 
 /**

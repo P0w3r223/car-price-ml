@@ -15,7 +15,7 @@ import re
 from fastapi.testclient import TestClient
 
 from api.main import app
-from car_price_ml import config
+from car_price_ml import config, data
 from car_price_ml.site import browser_model, form
 
 client = TestClient(app)
@@ -154,6 +154,28 @@ def test_the_form_and_the_model_declare_the_same_domains():
     assert one_hot["fuel"] == served["fuels"]
     assert one_hot["province"] == served["provinces"]
     assert exported["reference_year"] == served["reference_year"]
+
+
+def test_the_browsers_spelling_rule_still_matches_the_pythons():
+    """`app.js` lower-cases make and model; `data.canonical_mark_or_model` is the rule of record.
+
+    The form normalises before it checks the vocabulary, so the two must agree about what a
+    given spelling *is* — the province vocabulary drifted apart on exactly this kind of
+    hand-copied rule. Pinned by the vocabulary itself rather than by re-implementing the
+    function: every value the model knows must already be its own canonical form, so a Python
+    rule that started doing more than case-folding would fail here.
+    """
+    assert ".toLowerCase()" in APP_JS_CODE
+    exported = json.loads((config.SITE_APP_DIR / "model.json").read_text(encoding="utf-8"))
+    known = [value for step in exported["plan"] if step["kind"] == "target_encode"
+             for value in step["map"]]
+
+    assert known, "the exported model carries no make/model vocabulary"
+    for value in known:
+        assert data.canonical_mark_or_model(value) == value, (
+            f"{value!r} is not what the API would normalise it to, so the browser's "
+            f"lower-casing and the Python rule no longer agree"
+        )
 
 
 def test_the_model_and_its_runtime_are_served():

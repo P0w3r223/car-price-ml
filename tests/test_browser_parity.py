@@ -76,11 +76,41 @@ def test_the_fixture_covers_the_cases_a_sample_cannot(fixture):
     """Sampled adverts alone would leave the interesting failures untested."""
     names = " ".join(case["case"] for case in fixture["cases"])
 
-    assert "exactly on a split threshold" in names  # `<` instead of `<=` in a port
+    for field in config.NUMERIC_FEATURES:
+        # Per field, not as one substring: the fixture could otherwise lose every vol_engine
+        # boundary and still read as complete.
+        assert f"{field} exactly on a split threshold" in names  # `<` instead of `<=`
     assert "EV" in names                            # the one fuel allowed zero displacement
     for province in config.PROVINCES:
         assert province in names                    # every one-hot slot exercised
+    for fuel in config.KNOWN_FUELS:
+        assert f"fuel {fuel}" in names
     assert len(_refused(fixture)) == 4
+
+
+@needs_fixture
+def test_every_case_has_its_own_name(fixture):
+    """The two runtime comparisons below key results by case name; a duplicate would hide one."""
+    names = [case["case"] for case in fixture["cases"]]
+
+    assert len(set(names)) == len(names)
+
+
+@needs_fixture
+def test_the_page_and_the_form_describe_the_same_model(fixture, payload):
+    """The published page's numbers and the browser's model must come from one artifact.
+
+    Both files are committed and neither can be regenerated in CI, so nothing else notices if
+    one is republished without the other — and the failure is a site whose headline describes
+    one model while the form beside it announces another. Comparing the two committed files
+    needs neither artifact nor dataset, so this check runs everywhere.
+    """
+    metrics = json.loads((config.SITE_DATA_DIR / "metrics.json").read_text(encoding="utf-8"))
+
+    assert payload["served_model"] == metrics["served_model"]
+    assert payload["trained_at"] == metrics["trained_on"]
+    assert payload["n_train"] == metrics["n_train"]
+    assert fixture["served_model"] == metrics["served_model"]
 
 
 @needs_fixture

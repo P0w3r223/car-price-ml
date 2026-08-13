@@ -40,6 +40,10 @@ let MODEL = null; // the exported model, once predict.js has it loaded
 // "browser" (the exported model, running here). Both are the same 1 200 trees; the banner says
 // which one, because "where was this computed" is a question the reader is entitled to ask.
 let backend = "browser";
+// Set when the form has discovered that nothing can answer it any more. Latching rather than
+// re-checking: a form that reopened its own button after refusing would invite the reader to
+// press it again for the same refusal.
+let halted = false;
 
 // --- Configuration ----------------------------------------------------------
 
@@ -383,6 +387,17 @@ async function onSubmit(event) {
     if (typeof served.price === "number") {
       renderPrediction(served.price, served.asOf, "api");
     } else {
+      // The API answered at load and has stopped. Without a local model there is nothing left
+      // to answer with — and saying "the model runs in this page" while it does not, then
+      // blaming the reader's input for the TypeError that follows, would be two false claims
+      // in place of one honest refusal.
+      if (!MODEL) {
+        halted = true; // the `finally` below leaves the button shut rather than reopening it
+        renderUnavailable("the prediction API stopped answering and the model could not be "
+                          + "loaded from this page");
+        document.getElementById("result").hidden = true;
+        return;
+      }
       // What actually happened outranks what the probe found at load: a service that has gone
       // away since then must change the banner, not just this one answer.
       if (backend !== "browser") {
@@ -399,7 +414,7 @@ async function onSubmit(event) {
       renderProblems([`The model cannot price this ${error.field}: ${error.value}.`]);
     } else renderProblems([`Unexpected error: ${error.message}`]);
   } finally {
-    button.disabled = false;
+    button.disabled = halted;
     button.textContent = "Value this car";
   }
 }
@@ -425,15 +440,15 @@ async function init() {
   applyBounds();
   document.getElementById("valuation").addEventListener("submit", onSubmit);
 
+  // Together, not one after the other: a reader whose API is live would otherwise wait on a
+  // 2.3 MB download they are not going to use before the button opens.
   let modelFailure = null;
-  try {
-    MODEL = await loadModel();
-  } catch (error) {
-    MODEL = null;
-    modelFailure = error.message;
-  }
-
-  backend = await probeBackend();
+  const [loaded, probed] = await Promise.all([
+    loadModel().catch((error) => { modelFailure = error.message; return null; }),
+    probeBackend(),
+  ]);
+  MODEL = loaded;
+  backend = probed;
   // Neither path can answer: refuse, rather than reaching for something that can produce a
   // number anyway. This page had such a something until this change, and it was the only part
   // of the project that answered a question it could not answer.
