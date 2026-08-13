@@ -179,11 +179,39 @@ def test_the_browsers_spelling_rule_still_matches_the_pythons():
 
 
 def test_the_model_and_its_runtime_are_served():
-    """Both are fetched from this origin at load; a 404 on either is a dead form."""
+    """All three are fetched from this origin at load; a 404 on any is a dead form."""
     assert client.get("/predict.js").status_code == 200
+    assert client.get("/curve.js").status_code == 200
     model = client.get("/model.json")
     assert model.status_code == 200
     assert model.json()["schema"] == browser_model.BROWSER_MODEL_SCHEMA
+
+
+def test_the_runtime_reads_the_schema_the_exporter_writes():
+    """The second constant spelled in both languages, pinned like the config's.
+
+    It has already earned this: shipping the error bands changed the payload's shape, and a
+    runtime still reading schema 1 would have refused every valuation on a live page.
+    """
+    declared = re.search(r"const MODEL_SCHEMA = (\d+);",
+                         (config.SITE_APP_DIR / "predict.js").read_text(encoding="utf-8"))
+    assert declared, "predict.js no longer declares MODEL_SCHEMA"
+    assert int(declared.group(1)) == browser_model.BROWSER_MODEL_SCHEMA
+
+
+def test_the_what_if_controls_move_the_fields_rather_than_adding_new_ones():
+    """The sliders are a second control over `year` and `mileage`, not a second input.
+
+    If they were fields of their own, the form would have two answers to the same question and
+    the one the model saw would be whichever was read last.
+    """
+    page = client.get("/").text
+    for field in ("year", "mileage"):
+        assert re.search(rf'<input id="{field}-slider"[^>]*type="range"', page), field
+    # Bound from the config like every other limit, not typed into the markup.
+    assert 'bound("year-slider"' in APP_JS_CODE
+    assert 'bound("mileage-slider"' in APP_JS_CODE
+    assert 'id="whatif"' in page
 
 
 def test_the_form_ships_disabled():

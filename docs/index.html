@@ -146,32 +146,9 @@ footer {
   body { max-width: none; }
   details { display: none; }
 }
-/* What only the report page needs: the KPI row, the charts, the tables and the quoted rules.
-   Loaded after tokens.css and base.css. */
-
-/* KPI row: the four numbers that frame everything below. */
-.kpis {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
-  gap: 0.75rem;
-  margin: 1.75rem 0;
-  padding: 0;
-  list-style: none;
-}
-
-.kpi {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 0.9rem 1rem;
-}
-
-.kpi-value { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.02em; }
-.kpi-label { font-size: 0.85rem; font-weight: 600; }
-.kpi-note { font-size: 0.78rem; color: var(--muted); line-height: 1.35; }
-
-figure { margin: 1rem 0 0; }
-figcaption { color: var(--muted); font-size: 0.85rem; margin-top: 0.35rem; }
+/* The charts, shared by both published pages: the report draws them in Python and the
+   valuation form draws its what-if curve in JavaScript, and they must look like one
+   system rather than two. Class names are the contract between charts.py and curve.js. */
 
 /* Charts scroll inside their own box; the page itself never scrolls sideways. The min-width
    is what makes that true: with `max-width: 100%` alone an SVG with a viewBox simply scales
@@ -202,6 +179,32 @@ figcaption { color: var(--muted); font-size: 0.85rem; margin-top: 0.35rem; }
 /* Gridlines are a reading aid, not data: they must stay behind the series in weight as
    well as in paint order. */
 .chart .grid { stroke: var(--border); stroke-width: 1; opacity: 0.7; }
+/* What only the report page needs: the KPI row, the charts, the tables and the quoted rules.
+   Loaded after tokens.css and base.css. */
+
+/* KPI row: the four numbers that frame everything below. */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.75rem;
+  margin: 1.75rem 0;
+  padding: 0;
+  list-style: none;
+}
+
+.kpi {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.9rem 1rem;
+}
+
+.kpi-value { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.02em; }
+.kpi-label { font-size: 0.85rem; font-weight: 600; }
+.kpi-note { font-size: 0.78rem; color: var(--muted); line-height: 1.35; }
+
+figure { margin: 1rem 0 0; }
+figcaption { color: var(--muted); font-size: 0.85rem; margin-top: 0.35rem; }
 
 table { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
 th, td {
@@ -267,6 +270,7 @@ pre {
   <a href="adr/0001_scope-and-site-expansion.md">The decisions, with their measurements</a>
   <a href="adr/0002_site-quotes-the-code.md">Why this page quotes the code</a>
   <a href="adr/0004_the-model-runs-in-the-browser.md">How the model got into the browser</a>
+  <a href="adr/0005_a-valuation-with-its-spread.md">Why a price is never shown alone</a>
 </p>
 
 <h2>What the model refuses to price</h2>
@@ -599,7 +603,7 @@ pre {
     Built from the LightGBM artifact trained
     <time datetime="2026-08-13">2026-08-13</time> on
     111 018 adverts, commit
-    <code>f1edb01</code> ·
+    <code>25f7fcf</code> ·
     <a href="data/metrics.json">the aggregates this page renders</a> ·
     <a href="https://github.com/P0w3r223/car-price-ml">source on GitHub</a>
   </p>
