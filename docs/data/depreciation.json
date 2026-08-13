@@ -1,0 +1,136 @@
+{
+  "schema": 1,
+  "min_bucket_n": 100,
+  "buckets": [
+    {
+      "age": 0,
+      "median_price": 166295.0,
+      "n": 1746
+    },
+    {
+      "age": 1,
+      "median_price": 159495.0,
+      "n": 9150
+    },
+    {
+      "age": 2,
+      "median_price": 138900.0,
+      "n": 3318
+    },
+    {
+      "age": 3,
+      "median_price": 95000.0,
+      "n": 4911
+    },
+    {
+      "age": 4,
+      "median_price": 81900.0,
+      "n": 8185
+    },
+    {
+      "age": 5,
+      "median_price": 72900.0,
+      "n": 8437
+    },
+    {
+      "age": 6,
+      "median_price": 63500.0,
+      "n": 6663
+    },
+    {
+      "age": 7,
+      "median_price": 52999.0,
+      "n": 5773
+    },
+    {
+      "age": 8,
+      "median_price": 44945.0,
+      "n": 5604
+    },
+    {
+      "age": 9,
+      "median_price": 39900.0,
+      "n": 5295
+    },
+    {
+      "age": 10,
+      "median_price": 34900.0,
+      "n": 6051
+    },
+    {
+      "age": 11,
+      "median_price": 28900.0,
+      "n": 6377
+    },
+    {
+      "age": 12,
+      "median_price": 25300.0,
+      "n": 6169
+    },
+    {
+      "age": 13,
+      "median_price": 20900.0,
+      "n": 6495
+    },
+    {
+      "age": 14,
+      "median_price": 18900.0,
+      "n": 6176
+    },
+    {
+      "age": 15,
+      "median_price": 16900.0,
+      "n": 5401
+    },
+    {
+      "age": 16,
+      "median_price": 15500.0,
+      "n": 4427
+    },
+    {
+      "age": 17,
+      "median_price": 13700.0,
+      "n": 3310
+    },
+    {
+      "age": 18,
+      "median_price": 11900.0,
+      "n": 2466
+    },
+    {
+      "age": 19,
+      "median_price": 9999.0,
+      "n": 1622
+    },
+    {
+      "age": 20,
+      "median_price": 9295.0,
+      "n": 1130
+    },
+    {
+      "age": 21,
+      "median_price": 8900.0,
+      "n": 724
+    },
+    {
+      "age": 22,
+      "median_price": 8300.0,
+      "n": 475
+    },
+    {
+      "age": 23,
+      "median_price": 7500.0,
+      "n": 387
+    },
+    {
+      "age": 24,
+      "median_price": 6900.0,
+      "n": 252
+    },
+    {
+      "age": 25,
+      "median_price": 8900.0,
+      "n": 144
+    }
+  ]
+}

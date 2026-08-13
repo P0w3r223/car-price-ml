@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "control": {
+    "mark": "opel",
+    "model": "combo",
+    "fuel": "Diesel",
+    "province": "Mazowieckie",
+    "age": 7,
+    "mileage": 139568,
+    "vol_engine": 1248
+  },
+  "probes": [
+    {
+      "case": "A make the model was never trained on",
+      "input": "mark=ferrari, model=f40",
+      "rule": "refused — not in the artifact's vocabulary",
+      "unguarded": "34 093 PLN — and zzzz/qqqq returns 34 093 PLN",
+      "lesson": "Both encode to the global target mean, so every unknown car is the same car."
+    },
+    {
+      "case": "A known make, capitalised",
+      "input": "mark=Opel (the dataset spells it opel)",
+      "rule": "normalised to 'opel' and priced: 33 576 PLN",
+      "unguarded": "38 399 PLN (+14% against the same car)",
+      "lesson": "A spelling variant is normalised; a different word is refused. Not the same thing."
+    },
+    {
+      "case": "A diesel with no engine",
+      "input": "fuel=Diesel, vol_engine=0",
+      "rule": "refused — zero displacement is only meaningful for an EV",
+      "unguarded": "37 248 PLN (+11% against the same car with an engine)",
+      "lesson": "In this dataset zero displacement means 'missing', except on an EV where it is a fact."
+    },
+    {
+      "case": "An unknown fuel",
+      "input": "fuel=Petrol (a different word for a known fuel)",
+      "rule": "refused — not one of the 6 declared values",
+      "unguarded": "the encoder raises ValueError",
+      "lesson": "Under handle_unknown='ignore' this would have been an all-zero block and a confident price."
+    },
+    {
+      "case": "An unknown province",
+      "input": "province=Berlin (an advert from outside Poland)",
+      "rule": "refused — not one of the 16 declared values",
+      "unguarded": "the encoder raises ValueError",
+      "lesson": "Under handle_unknown='ignore' this would have been an all-zero block and a confident price."
+    },
+    {
+      "case": "A province spelled the common way",
+      "input": "province=Kujawsko-Pomorskie",
+      "rule": "normalised to 'Kujawsko-pomorskie' and priced",
+      "unguarded": "an all-zero location block, priced as if the car had no province",
+      "lesson": "This shipped: the web form sent this spelling, and ~7 % of the market was valued with no location at all."
+    }
+  ]
+}

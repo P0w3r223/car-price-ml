@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "served_model": "LightGBM",
+  "reference_year": 2022,
+  "n_train": 111018,
+  "cv_folds": 5,
+  "bakeoff": {
+    "Ridge": {
+      "mae": 14889.2,
+      "rmse": 31797.0,
+      "mape": 22.7,
+      "r2": 0.8472,
+      "mae_fold_std": 51.3
+    },
+    "RandomForest": {
+      "mae": 8798.3,
+      "rmse": 20185.7,
+      "mape": 14.69,
+      "r2": 0.9384,
+      "mae_fold_std": 80.7
+    },
+    "LightGBM": {
+      "mae": 8612.2,
+      "rmse": 19560.8,
+      "mape": 14.33,
+      "r2": 0.9422,
+      "mae_fold_std": 71.5
+    }
+  },
+  "artifact_bytes": {
+    "Ridge": null,
+    "RandomForest": 590000000,
+    "LightGBM": 13874240
+  },
+  "vocabulary_sizes": {
+    "mark": 23,
+    "model": 328,
+    "fuel": 6,
+    "province": 16
+  },
+  "trained_on": "2026-08-12",
+  "commit": "13e93dc"
+}

@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "served_model": "LightGBM",
+  "sample_size": 1000,
+  "unit": "log-price contribution",
+  "features": [
+    {
+      "feature": "age",
+      "mean_abs_shap": 0.592
+    },
+    {
+      "feature": "model",
+      "mean_abs_shap": 0.2054
+    },
+    {
+      "feature": "vol_engine",
+      "mean_abs_shap": 0.1614
+    },
+    {
+      "feature": "mark",
+      "mean_abs_shap": 0.1057
+    },
+    {
+      "feature": "mileage",
+      "mean_abs_shap": 0.0993
+    },
+    {
+      "feature": "fuel",
+      "mean_abs_shap": 0.0302
+    },
+    {
+      "feature": "province",
+      "mean_abs_shap": 0.0275
+    }
+  ]
+}
