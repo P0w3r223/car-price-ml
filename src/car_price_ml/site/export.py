@@ -380,3 +380,10 @@ def export(out_dir: Path | None = None) -> list[Path]:
 if __name__ == "__main__":
     for path in export():
         print("wrote", path)
+    # The browser's copy of the model goes out with the page's numbers: both are measured from
+    # the same artifact, and publishing one without the other would put a page describing one
+    # model beside a form running another.
+    from car_price_ml.site import browser_model
+
+    for path in browser_model.export():
+        print("wrote", path)

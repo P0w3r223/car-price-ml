@@ -1,10 +1,10 @@
 /* What only the valuation form needs: the inputs, the banner that says what is answering
    them, and two visually different kinds of answer. Loaded after tokens.css and base.css.
 
-   The two answers are the reason this file has as many rules as it does. A model prediction
-   and an offline heuristic used to differ by a badge colour and nothing else — same card,
-   same weight, same big number — so the fallback read as a valuation. They now differ in
-   border, in the weight of the figure and in whether the figure is approximate at all. */
+   There used to be a third kind of answer here: an "offline estimate" from a formula in
+   app.js, which needed a visibly weaker treatment so it could not be mistaken for a
+   valuation. The model itself now runs in the page, so that answer — and the styling that
+   hedged it — is gone. What remains is a prediction and a refusal. */
 
 form {
   background: var(--surface);
@@ -65,27 +65,22 @@ button:disabled { cursor: not-allowed; }
 button:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
 
 /* The banner above the form: what will answer it, said before the reader spends a submit
-   finding out. Its three states are the three things that can be true. */
+   finding out. Two states now say "a model is answering, and here is which one"; the third is
+   the refusal that replaced the old fallback. */
 .status { margin: 1.25rem 0; }
 .status.live { border-left: 3px solid var(--positive); }
-.status.offline { border-left: 3px solid var(--warn); }
 .status.broken { border-left: 3px solid var(--danger); }
 .status-label { font-weight: 600; font-size: 0.85rem; }
 .status.live .status-label { color: var(--positive); }
-.status.offline .status-label { color: var(--warn); }
 .status.broken .status-label { color: var(--danger); }
 .status p { margin: 0.35rem 0 0; font-size: 0.92rem; color: var(--muted); }
 
 .result { margin: 1.25rem 0; }
 .result.prediction { border-left: 3px solid var(--accent); }
-/* A guessed number does not get the treatment a measured one gets: dashed rather than
-   solid, and the figure below it is lighter and approximate. */
-.result.estimate { border-left: 3px dashed var(--warn); background: none; }
 .result.refused { border-left: 3px solid var(--danger); }
 
 .result-label { font-weight: 600; font-size: 0.85rem; }
 .result.prediction .result-label { color: var(--accent); }
-.result.estimate .result-label { color: var(--warn); }
 .result.refused .result-label { color: var(--danger); }
 
 .price {
@@ -95,8 +90,6 @@ button:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
   font-variant-numeric: tabular-nums;
   margin: 0.2rem 0 0;
 }
-
-.result.estimate .price { font-weight: 500; color: var(--muted); }
 
 .result p.note { margin: 0.4rem 0 0; }
 
