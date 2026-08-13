@@ -17,7 +17,6 @@ from __future__ import annotations
 import json
 import subprocess
 from dataclasses import asdict, dataclass
-from datetime import date
 from pathlib import Path
 
 import numpy as np
@@ -25,8 +24,8 @@ import pandas as pd
 
 from car_price_ml import config, data, features
 from car_price_ml import model as model_module
+from car_price_ml.site import AGGREGATE_SCHEMA
 
-SCHEMA_VERSION = 1
 SHAP_SAMPLE_SIZE = 1_000
 # Age buckets thinner than this are dropped from the depreciation curve rather than drawn:
 # the oldest bucket in the data holds a handful of adverts, and a median over them wobbles
@@ -84,6 +83,9 @@ def _git_commit() -> str | None:
     try:
         result = subprocess.run(
             ["git", "rev-parse", "--short", "HEAD"],
+            # This repository, not whatever directory the export happened to be launched
+            # from: run from another checkout, the page would stamp that repository's SHA.
+            cwd=config.PROJECT_ROOT,
             capture_output=True, text=True, timeout=10, check=False,
         )
     except (OSError, subprocess.SubprocessError):
@@ -113,6 +115,17 @@ def _depreciation(df: pd.DataFrame) -> list[dict]:
     """Median advert price per year of age, over the cleaned data."""
     grouped = df.groupby("age")[config.TARGET].agg(["median", "size"]).reset_index()
     kept = grouped[grouped["size"] >= MIN_BUCKET_N]
+    ages = [int(age) for age in kept["age"]]
+    # The chart joins these points with a line, which asserts something about the interval
+    # between them. Dropping a thin bucket in the middle would draw a straight segment across
+    # ages nobody measured, and it would look exactly like measured data.
+    gaps = sorted(set(range(min(ages), max(ages) + 1)) - set(ages)) if ages else []
+    if gaps:
+        raise ExportError(
+            f"the depreciation curve would bridge unmeasured ages {gaps} — buckets under "
+            f"n={MIN_BUCKET_N} now fall inside the range, so a line through them would "
+            f"invent data. Decide how to show the gap before publishing."
+        )
     return [
         {"age": int(row["age"]), "median_price": round(float(row["median"]), 2),
          "n": int(row["size"])}
@@ -140,6 +153,7 @@ def _drivers(fitted, x: pd.DataFrame) -> list[dict]:
         )
 
     totals: dict[str, float] = {column: 0.0 for column in features.FEATURE_COLUMNS}
+    slots_per_column: dict[str, int] = {column: 0 for column in features.FEATURE_COLUMNS}
     for name, value in zip(names, per_slot):
         # One-hot slots are named "<column>_<category>"; the encoder is fit on the declared
         # domains, so the prefix match is against a closed set rather than a guess.
@@ -150,6 +164,12 @@ def _drivers(fitted, x: pd.DataFrame) -> list[dict]:
         if owner is None:
             raise ExportError(f"SHAP slot {name!r} belongs to no known feature column")
         totals[owner] += float(value)
+        slots_per_column[owner] += 1
+    # A column that produced no slot would publish a measured-looking 0.0 — "this feature
+    # does not matter" rather than "this feature was not explained".
+    unexplained = [column for column, count in slots_per_column.items() if not count]
+    if unexplained:
+        raise ExportError(f"no SHAP slot matched feature columns {unexplained}")
     ordered = sorted(totals.items(), key=lambda kv: kv[1], reverse=True)
     return [{"feature": name, "mean_abs_shap": round(value, 4)} for name, value in ordered]
 
@@ -188,10 +208,19 @@ def _refusals(fitted, vocabulary: dict[str, list[str]]) -> list[dict]:
     # The same make spelled the way a human writes it. Casefolding is the fix; without it
     # "Opel" is simply an unknown category, priced at that same global mean.
     capitalised = _predict(fitted, mark="Opel")
+    # The normalisation the API applies, executed rather than described — the province probe
+    # below already calls its rule, and a claim that only this one asserts would keep
+    # reading "normalised and priced" the day the casefold regressed.
+    normalised = "Opel".strip().casefold()
+    if normalised not in vocabulary["mark"]:
+        raise ExportError(
+            f"'Opel' no longer normalises onto a known make ({normalised!r} is not in the "
+            f"artifact's vocabulary) — the page claims it does"
+        )
     probes.append(Probe(
         case="A known make, capitalised",
         input="mark=Opel (the dataset spells it opel)",
-        rule=f"normalised to 'opel' and priced: {_pln(control)}",
+        rule=f"normalised to '{normalised}' and priced: {_pln(control)}",
         unguarded=f"{_pln(capitalised)} "
                   f"({(capitalised / control - 1):+.0%} against the same car)",
         lesson="A spelling variant is normalised; a different word is refused. Not the same thing.",
@@ -217,7 +246,17 @@ def _refusals(fitted, vocabulary: dict[str, list[str]]) -> list[dict]:
     ):
         try:
             _predict(fitted, **{field: value})
-        except Exception as error:  # noqa: BLE001 — the class is the encoder's, the fact is that it raises
+        except ValueError as error:
+            # Narrow on purpose. Catching everything would publish an unrelated crash — a
+            # typo in the override key, a dtype error — in the column that exists to prove
+            # the guard works. The message has to name the offending value, or this is not
+            # the encoder refusing an unknown category.
+            if value not in str(error):
+                raise ExportError(
+                    f"{field}={value!r} raised {error!r}, which does not name the value — "
+                    f"that is not the closed domain refusing it, and the page must not say "
+                    f"it is"
+                ) from error
             unguarded = f"the encoder raises {type(error).__name__}"
         else:
             raise ExportError(
@@ -249,6 +288,22 @@ def _refusals(fitted, vocabulary: dict[str, list[str]]) -> list[dict]:
     return [asdict(probe) for probe in probes]
 
 
+def _require_stamps(metadata: dict) -> None:
+    """The page states these as facts about the served model, so it must read them from it.
+
+    Both used to have a plausible substitute available — today's row count for ``n_train``,
+    the artifact file's mtime for the training date — and both would have been wrong in
+    exactly the case that matters: an artifact older than the data beside it. An mtime is
+    the date the file was last copied, not fit.
+    """
+    for field in ("n_train", "trained_at"):
+        if not metadata.get(field):
+            raise ExportError(
+                f"the artifact carries no {field}, so the page cannot state it — this bundle "
+                f"predates the stamp; retrain with `python -m car_price_ml.train`"
+            )
+
+
 def export(out_dir: Path | None = None) -> list[Path]:
     """Measure everything the page prints and write it as JSON. Returns the paths written."""
     out_dir = Path(out_dir or config.SITE_DATA_DIR)
@@ -264,35 +319,41 @@ def export(out_dir: Path | None = None) -> list[Path]:
             "is built around cannot be measured — retrain with `python -m car_price_ml.train`"
         )
 
+    # The served artifact itself, not a fresh fit of the same configuration. Refitting here
+    # published behaviour — every refusal price, every SHAP value — measured on a model
+    # nobody is running, while the size and date columns beside it vouched for the file on
+    # disk. `load_model` checks the feature spec, the age anchor and the vocabularies, but
+    # not which rows a model saw, so the two could differ with nothing looking wrong.
+    fitted = bundle["model"]
     df = data.load_clean()
-    x, y = features.prepare(df)
-    fitted = model_module.train(x, y, name=served)
+    x, _ = features.prepare(df)
     vocabulary = metadata["vocabulary"]
-    model_path = config.MODELS_DIR / model_module.MODEL_FILENAME
+
+    _require_stamps(metadata)
 
     metrics = {
-        "schema": SCHEMA_VERSION,
+        "schema": AGGREGATE_SCHEMA,
         "served_model": served,
         "reference_year": metadata["reference_year"],
-        "n_train": metadata.get("n_train", len(x)),
+        "n_train": metadata["n_train"],
         "cv_folds": config.CV_FOLDS,
         "bakeoff": bakeoff,
         "artifact_bytes": _artifact_sizes(served, config.MODELS_DIR),
         "vocabulary_sizes": {field: len(values) for field, values in vocabulary.items()},
-        "trained_on": date.fromtimestamp(model_path.stat().st_mtime).isoformat(),
+        "trained_on": metadata["trained_at"],
         "commit": _git_commit(),
     }
 
     written = []
     for name, payload in (
         ("metrics.json", metrics),
-        ("drivers.json", {"schema": SCHEMA_VERSION, "served_model": served,
+        ("drivers.json", {"schema": AGGREGATE_SCHEMA, "served_model": served,
                           "sample_size": min(SHAP_SAMPLE_SIZE, len(x)),
                           "unit": "log-price contribution",
                           "features": _drivers(fitted, x)}),
-        ("depreciation.json", {"schema": SCHEMA_VERSION, "min_bucket_n": MIN_BUCKET_N,
+        ("depreciation.json", {"schema": AGGREGATE_SCHEMA, "min_bucket_n": MIN_BUCKET_N,
                                "buckets": _depreciation(df)}),
-        ("refusals.json", {"schema": SCHEMA_VERSION, "control": _CONTROL,
+        ("refusals.json", {"schema": AGGREGATE_SCHEMA, "control": _CONTROL,
                            "probes": _refusals(fitted, vocabulary)}),
     ):
         path = out_dir / name

@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import inspect
 import json
+import math
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -25,7 +26,7 @@ from markupsafe import Markup
 
 from car_price_ml import config, data, features
 from car_price_ml import model as model_module
-from car_price_ml.site import charts
+from car_price_ml.site import AGGREGATE_SCHEMA, charts
 
 TEMPLATE_DIR = Path(__file__).parent / "templates"
 ASSET_DIR = Path(__file__).parent / "assets"
@@ -44,6 +45,10 @@ PUBLISHED_RULES = (
 
 class MissingAggregate(FileNotFoundError):
     """Raised when the page is built before the aggregates it renders were exported."""
+
+
+class StaleAggregate(ValueError):
+    """Raised when an aggregate was written against a different shape than this build reads."""
 
 
 @dataclass(frozen=True)
@@ -70,7 +75,16 @@ def _load(name: str, data_dir: Path) -> dict:
             f"no {name} at {path} — run `python -m car_price_ml.site.export` first "
             f"(it needs the trained artifact and the dataset)"
         )
-    return json.loads(path.read_text(encoding="utf-8"))
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    # The same contract `model.load_model` enforces on the artifact, one layer out. Without
+    # it a shape change renders whatever fields still happen to match — or dies on a bare
+    # KeyError that says nothing about why.
+    if payload.get("schema") != AGGREGATE_SCHEMA:
+        raise StaleAggregate(
+            f"{path} is schema {payload.get('schema')!r}, this build reads "
+            f"{AGGREGATE_SCHEMA} — re-run `python -m car_price_ml.site.export`"
+        )
+    return payload
 
 
 def _runner_up(metrics: dict) -> tuple[str, int] | None:
@@ -108,6 +122,46 @@ def _headline(metrics: dict) -> dict:
                   f"{metrics['cv_folds']}-fold cross-validation, in an artifact of "
                   f"{_megabytes(served_size)}.",
     }
+
+
+def _accuracy_verdict(metrics: dict) -> str:
+    """Does the winner's lead survive the folds — decided from the numbers, not written.
+
+    This paragraph used to be prose, and the prose was wrong: it called a 186 PLN gap
+    "inside the noise" while the chart above it drew two whiskers that do not overlap. Worse,
+    the margin was typed in, so a retrain would have moved the headline, the KPI row and the
+    chart while this sentence went on asserting a tie. Both halves are derived now.
+
+    Two spreads are combined in quadrature rather than compared one at a time: each fold mean
+    carries its own wobble, and the question is whether the difference between them clears
+    both.
+    """
+    served = metrics["served_model"]
+    ranked = sorted(metrics["bakeoff"].items(), key=lambda kv: kv[1]["mae"])
+    if len(ranked) < 2 or ranked[0][0] != served:
+        # A pinned model that lost its own bake-off. `train.py` logs that loudly; the page
+        # says it plainly rather than dressing it up as a result.
+        return (
+            f"{served} is served although it did not win the comparison — the winner was "
+            f"{ranked[0][0]} at {_thousands(ranked[0][1]['mae'])} PLN."
+        )
+
+    (_, best), (rival, runner_up) = ranked[0], ranked[1]
+    gap = runner_up["mae"] - best["mae"]
+    combined = math.hypot(best["mae_fold_std"], runner_up["mae_fold_std"])
+    if gap <= combined:
+        return (
+            f"Read the whiskers before the ranking: the {_thousands(gap)} PLN lead over "
+            f"{rival} is inside the folds' combined spread ({_thousands(combined)} PLN), so "
+            f"on accuracy alone this is a tie and the decision rests on the size column."
+        )
+    return (
+        f"The {_thousands(gap)} PLN lead over {rival} clears the folds' combined spread "
+        f"({_thousands(combined)} PLN), so the ranking is not fold noise. It is still the "
+        f"best of sixteen configurations scored on the same cross-validation, which makes "
+        f"the winner's own score a little optimistic — so the decision to serve it rests on "
+        f"the size difference, which selection noise cannot touch."
+    )
 
 
 def _kpis(metrics: dict) -> list[Kpi]:
@@ -164,7 +218,8 @@ def _assert_figures_are_complete(figures: dict[str, str]) -> None:
             continue  # nothing to plot, and the page says so
         if 'class="bar-value"' not in markup:
             raise charts.IncompleteFigure(f"chart {name!r} would publish values without labels")
-    if 'class="spread"' not in figures["bakeoff"]:
+    bakeoff = figures["bakeoff"]
+    if 'class="empty"' not in bakeoff and 'class="spread"' not in bakeoff:
         raise charts.IncompleteFigure("the model comparison would publish MAE without its spread")
 
 
@@ -197,6 +252,7 @@ def gather(data_dir: Path | None = None) -> dict:
     return {
         "metrics": metrics,
         "headline": _headline(metrics),
+        "accuracy_verdict": _accuracy_verdict(metrics),
         "kpis": _kpis(metrics),
         "served": served,
         "served_scores": metrics["bakeoff"][served],

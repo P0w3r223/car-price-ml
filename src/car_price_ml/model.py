@@ -8,6 +8,7 @@ with out-of-fold predictions — never a single split.
 
 from __future__ import annotations
 
+from datetime import date
 from pathlib import Path
 
 import joblib
@@ -171,6 +172,11 @@ def save_model(model, metadata: dict | None = None, models_dir: Path = config.MO
         "features": list(features.FEATURE_COLUMNS),
         "reference_year": config.REFERENCE_YEAR,
         "vocabulary": artifact_vocabulary(model),
+        # When this model was fit, recorded by the run that fit it. The published page used
+        # to date the model from the file's mtime, which is the date it was last *copied* —
+        # a restored backup or a `docker cp` would have published its own timestamp as a
+        # training date, and nothing would have looked wrong.
+        "trained_at": date.today().isoformat(),
     }
     joblib.dump({"model": model, "metadata": bundle_metadata}, path)
     return path
