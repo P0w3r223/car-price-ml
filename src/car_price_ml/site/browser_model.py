@@ -40,10 +40,15 @@ import pandas as pd
 
 from car_price_ml import config, data, features
 from car_price_ml import model as model_module
+from car_price_ml.site import MIN_BUCKET_N
 
 # Bump when the payload's shape changes. The runtime refuses anything else rather than
 # interpreting the fields it recognises — the same contract as the artifact and config.json.
-BROWSER_MODEL_SCHEMA = 1
+# 2: carries the out-of-fold error bands, so a valuation can be shown with the spread it
+# actually has at that price rather than with the model's average error.
+# 3: carries the oldest age the data supports, so the what-if curve stops where the report's
+# depreciation curve stops instead of drawing ages nobody measured.
+BROWSER_MODEL_SCHEMA = 3
 
 MODEL_FILENAME = "model.json"
 
@@ -224,6 +229,25 @@ def encode_car(plan: list[dict], car: dict) -> list[float]:
     return row
 
 
+def error_band(payload: dict, price: float) -> dict:
+    """The measured error band a valuation falls in — the reference for `predict.js`.
+
+    Outside the range the out-of-fold predictions covered, the nearest band is returned with
+    ``measured=False`` rather than an invented one: clamping is a fallback, so it is labelled
+    as one instead of being presented as a measurement of that price.
+    """
+    bands = payload["error_bands"]
+    for index, band in enumerate(bands):
+        # Half-open, so a price sitting exactly on a shared edge belongs to exactly one band;
+        # the last band closes at its top edge because there is nothing above it to hand on to.
+        last = index == len(bands) - 1
+        if band["from_pln"] <= price and (price <= band["to_pln"] if last
+                                          else price < band["to_pln"]):
+            return {**band, "measured": True}
+    nearest = bands[0] if price < bands[0]["from_pln"] else bands[-1]
+    return {**nearest, "measured": False}
+
+
 def predict(payload: dict, car: dict) -> float:
     """Price one car from the exported payload alone — the runtime, in Python."""
     row = encode_car(payload["plan"], car)
@@ -236,6 +260,61 @@ def predict(payload: dict, car: dict) -> float:
                     else trees["right"][node])
         total += trees["value"][node]
     return math.expm1(total)
+
+
+def _age_support() -> dict:
+    """The oldest age the data actually supports, by the rule the report's curve already obeys.
+
+    The form's what-if curve prices the same car at every age, and the model will answer for
+    any of them — at 33 years and beyond it returns one flat number, because the trees have run
+    out of splits, and between 29 and 33 it has the car *gaining* value. Drawn with the same
+    class names as the report's chart, on the same site, that reads as a measurement. So the
+    curve stops where the report's stops: at the last age with a bucket the site is willing to
+    publish.
+    """
+    frame = data.load_clean()
+    sizes = frame.groupby("age").size()
+    supported = sorted(int(age) for age, count in sizes.items() if count >= MIN_BUCKET_N)
+    if not supported or supported[0] != 0:
+        raise BrowserExportError(
+            f"no contiguous run of age buckets from 0 with n >= {MIN_BUCKET_N} — the what-if "
+            f"curve would have to start somewhere the reader did not ask about"
+        )
+    oldest = 0
+    for age in supported:
+        if age != oldest:
+            break
+        oldest = age + 1
+    return {"max_age": oldest - 1, "min_bucket_n": MIN_BUCKET_N}
+
+
+def _error_bands(metadata: dict) -> list[dict]:
+    """The artifact's out-of-fold error bands, checked for the shape the runtime looks up in.
+
+    Refused rather than defaulted if absent: a form that quoted a price with no spread, or
+    with a spread it invented, is the same failure as one that priced an unknown make.
+    """
+    bands = metadata.get("oof_error_bands")
+    if not bands:
+        raise BrowserExportError(
+            "the artifact carries no out-of-fold error bands, so a valuation could not be "
+            "shown with its spread — retrain with `python -m car_price_ml.train`"
+        )
+    edges = [(band["from_pln"], band["to_pln"]) for band in bands]
+    if any(low >= high for low, high in edges) or edges != sorted(edges):
+        raise BrowserExportError(f"the error bands are not in ascending price order: {edges}")
+    # Contiguous, not merely ordered: a gap between two bands is a price the lookup cannot
+    # place, and both lookups answer an unplaceable price with the nearest band — which for
+    # anything above the first gap means the most expensive one.
+    gaps = [(lower["to_pln"], upper["from_pln"]) for lower, upper in zip(bands, bands[1:])
+            if lower["to_pln"] != upper["from_pln"]]
+    if gaps:
+        raise BrowserExportError(
+            f"the error bands leave {len(gaps)} gap(s) a valuation could fall into ({gaps[:3]}"
+            f"...) — a price in one would be shown the nearest band's spread and told it was "
+            f"outside the measured range"
+        )
+    return bands
 
 
 def _reachable_values(payload: dict) -> dict[int, list[float] | tuple[float, float]]:
@@ -370,6 +449,12 @@ def build(models_dir: Path | None = None) -> tuple[dict, dict, float]:
         "n_train": metadata["n_train"],
         "reference_year": metadata["reference_year"],
         "inverse": "expm1",
+        # Measured at training time from the winner's own out-of-fold predictions. Shipped
+        # with the model because a price without its spread is a precision the model does not
+        # have — and the spread is not one number: the median absolute error runs from about
+        # 1 500 PLN in the cheapest tenth of the market to 21 600 in the dearest.
+        "error_bands": _error_bands(metadata),
+        "age_support": _age_support(),
         "plan": plan,
         "trees": _flatten(booster),
     }

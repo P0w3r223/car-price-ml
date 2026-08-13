@@ -24,13 +24,9 @@ import pandas as pd
 
 from car_price_ml import config, data, features
 from car_price_ml import model as model_module
-from car_price_ml.site import AGGREGATE_SCHEMA
+from car_price_ml.site import AGGREGATE_SCHEMA, MIN_BUCKET_N
 
 SHAP_SAMPLE_SIZE = 1_000
-# Age buckets thinner than this are dropped from the depreciation curve rather than drawn:
-# the oldest bucket in the data holds a handful of adverts, and a median over them wobbles
-# by thousands of złoty — a shape the reader would take for a market effect.
-MIN_BUCKET_N = 100
 
 # Artifact sizes from the size↔quality curve measured for ADR 0001 on 2026-08-12: each model
 # fit on the full cleaned dataset and dumped with joblib, sizes in decimal MB. They are

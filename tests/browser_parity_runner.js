@@ -24,7 +24,12 @@ const fixture = JSON.parse(
 const model = createModel(payload);
 const results = fixture.cases.map((entry) => {
   try {
-    return { case: entry.case, price: model.predict(entry.car) };
+    const price = model.predict(entry.car);
+    const band = model.errorBand(price);
+    // Reported rather than judged here: which band a price falls in is compared against the
+    // Python lookup on the other side, so this file states what it found and nothing more.
+    return { case: entry.case, price, band: { from: band.from_pln, to: band.to_pln,
+                                              p50: band.p50_abs_error, measured: band.measured } };
   } catch (error) {
     if (error instanceof UnknownValue) {
       return { case: entry.case, refused: error.field };

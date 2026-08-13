@@ -132,6 +132,39 @@ footer {
   body { max-width: none; }
   details { display: none; }
 }
+/* The charts, shared by both published pages: the report draws them in Python and the
+   valuation form draws its what-if curve in JavaScript, and they must look like one
+   system rather than two. Class names are the contract between charts.py and curve.js. */
+
+/* Charts scroll inside their own box; the page itself never scrolls sideways. The min-width
+   is what makes that true: with `max-width: 100%` alone an SVG with a viewBox simply scales
+   down, so `overflow-x` never fires and a 720 px chart renders at 44 % on a phone — taking
+   11 px labels to under 5 px. Below this width the box scrolls instead of shrinking. */
+.chart-wrap { overflow-x: auto; }
+.chart { min-width: 34rem; max-width: 100%; height: auto; display: block; }
+.chart text { font-size: 11px; fill: var(--text); }
+.chart .bar-label { fill: var(--text); }
+.chart .bar-value, .chart .axis { fill: var(--muted); font-size: 10.5px; }
+.chart .bar { fill: var(--accent-soft); }
+.chart .bar.served { fill: var(--accent); }
+/* The fold-to-fold spread, drawn across the bar end. Deliberately the text colour rather
+   than the bar's: it is a statement about the bar, not a part of it. */
+.chart .spread { stroke: var(--text); stroke-width: 2; opacity: 0.8; }
+.chart .spread-cap { stroke: var(--text); stroke-width: 1.5; opacity: 0.8; }
+.chart .series {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.chart .series-dot { fill: var(--accent); }
+/* Points that only shape the line, next to the ones that carry a printed value. */
+.chart .series-dot.minor { fill: var(--accent); opacity: 0.45; }
+.chart .axis-line { stroke: var(--border); stroke-width: 1; }
+/* Gridlines are a reading aid, not data: they must stay behind the series in weight as
+   well as in paint order. */
+.chart .grid { stroke: var(--border); stroke-width: 1; opacity: 0.7; }
 /* What only the valuation form needs: the inputs, the banner that says what is answering
    them, and two visually different kinds of answer. Loaded after tokens.css and base.css.
 
@@ -209,13 +242,33 @@ button:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
 .status.broken .status-label { color: var(--danger); }
 .status p { margin: 0.35rem 0 0; font-size: 0.92rem; color: var(--muted); }
 
+/* The what-if sliders sit under the field they move, quieter than the field itself: they are
+   a way to explore the model's answer, not a second place to enter the car. */
+.slider {
+  width: 100%;
+  padding: 0;
+  margin-top: 0.15rem;
+  border: none;
+  background: none;
+  accent-color: var(--accent);
+}
+
 .result { margin: 1.25rem 0; }
 .result.prediction { border-left: 3px solid var(--accent); }
 .result.refused { border-left: 3px solid var(--danger); }
+/* Nothing is wrong yet — the form is simply not filled in, and colouring that like a refusal
+   would tell the reader off for having started. */
+.result.pending { border-left: 3px solid var(--border); }
 
 .result-label { font-weight: 600; font-size: 0.85rem; }
 .result.prediction .result-label { color: var(--accent); }
 .result.refused .result-label { color: var(--danger); }
+.result.pending .result-label { color: var(--muted); }
+
+/* No transition on the figure. It is replaced rather than updated on every keystroke, so a
+   transition would never run — and a rule that cannot fire is worse than none: it reads as a
+   considered choice about motion while doing nothing. The live update is a text change with no
+   movement, which is what `prefers-reduced-motion` would have asked for anyway. */
 
 .price {
   font-size: 2rem;

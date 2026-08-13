@@ -48,9 +48,13 @@
       </label>
       <label>Year
         <input id="year" type="number" inputmode="numeric" required placeholder="2015">
+        <!-- What-if control over the same value, not a second field: the model runs in this
+             page, so dragging it costs a millisecond and no request. -->
+        <input id="year-slider" class="slider" type="range" aria-label="Year, as a slider">
       </label>
       <label>Mileage (km)
         <input id="mileage" type="number" inputmode="numeric" required placeholder="139568">
+        <input id="mileage-slider" class="slider" type="range" aria-label="Mileage, as a slider">
       </label>
       <label>Engine capacity (cm&sup3;)
         <input id="vol_engine" type="number" inputmode="numeric" required placeholder="1248">
@@ -61,6 +65,19 @@
 
   <section id="result" aria-live="polite" hidden></section>
 
+  <!-- The car in the form, priced at every age the model was trained on. Every point is a
+       real prediction made here, not a lookup into a published curve. -->
+  <section id="whatif" hidden>
+    <h2>This car, as it ages</h2>
+    <div class="chart-wrap" id="whatif-chart"></div>
+    <p class="note">
+      The model's own answer for the car above at each age, with everything else held as you
+      entered it — so it is a curve about <em>this</em> car, not the market's median. Drag the
+      year or mileage slider to redraw it.
+    </p>
+    <p class="note" id="whatif-limit"></p>
+  </section>
+
   <footer>
     <a href="../index.html">← the analysis behind this form</a> ·
     <a href="https://github.com/P0w3r223/car-price-ml">source on GitHub</a>
@@ -70,6 +87,7 @@
      file is required by tests/browser_parity_runner.js under Node, so the thing the fixture
      verifies is the thing this page runs. -->
 <script src="predict.js"></script>
+<script src="curve.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

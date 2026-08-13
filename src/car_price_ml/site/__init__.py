@@ -17,6 +17,13 @@ AGGREGATE_SCHEMA = 1
 
 ASSET_DIR = Path(__file__).parent / "assets"
 
+# Age buckets thinner than this are not drawn: the oldest ages hold a handful of adverts, and
+# a median or a model answer over them wobbles by thousands of złoty — a shape a reader takes
+# for a market effect. Shared, because two charts on the same site obey it: the report's
+# depreciation curve drops such buckets, and the form's what-if curve stops where they begin.
+# One number, or the two curves would disagree about which ages the data supports.
+MIN_BUCKET_N = 100
+
 
 def stylesheet(*parts: str) -> str:
     """Concatenate stylesheet parts, in the cascade order given.

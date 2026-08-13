@@ -1,5 +1,5 @@
 {
-  "schema": 1,
+  "schema": 3,
   "served_model": "LightGBM",
   "trained_at": "2026-08-13",
   "tolerance_pln": 0.01,
