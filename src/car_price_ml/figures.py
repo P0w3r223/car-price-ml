@@ -1,11 +1,17 @@
-"""Regenerate the report figures from the current data and model.
+"""Regenerate the notebook's figures from the current data and model.
 
     python -m car_price_ml.figures
 
-The figures used to exist only inside the notebook, which meant the published page could
-carry charts drawn from data the pipeline no longer produces — the cleaning rules moved the
-row count by 6 909 without the charts noticing. Generating them from the same modules the
-model uses keeps the page and the pipeline in step.
+These charts used to exist only inside the notebook, which meant they could be drawn from
+data the pipeline no longer produces — the cleaning rules moved the row count by 6 909
+without the charts noticing. Generating them from the same modules the model uses keeps them
+in step with it.
+
+They no longer feed the published page: it draws its own charts as inline SVG from the
+aggregates ``car_price_ml.site.export`` measures, so that it inherits the reader's colour
+scheme and stays readable at any width. What is left here is the notebook's illustrative
+material — including the SHAP beeswarm, which carries per-advert detail a bar chart of mean
+|SHAP| deliberately drops.
 """
 
 from __future__ import annotations

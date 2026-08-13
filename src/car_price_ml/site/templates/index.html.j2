@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ headline.claim }} — car-price-ml</title>
+<meta name="description" content="{{ headline.detail }}">
+<meta property="og:type" content="website">
+<meta property="og:title" content="{{ headline.claim }}">
+<meta property="og:description" content="{{ headline.detail }}">
+<meta property="og:url" content="https://p0w3r223.github.io/car-price-ml/">
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22><text y=%2213%22 font-size=%2213%22>&#128663;</text></svg>">
+<style>
+{{ styles }}
+</style>
+</head>
+<body>
+
+<header>
+  <p class="eyebrow">Polish used-car prices · {{ metrics.reference_year }} snapshot · served by {{ served }}</p>
+  <h1>{{ headline.claim }}</h1>
+  <p class="lead">{{ headline.detail }}</p>
+</header>
+
+<ul class="kpis">
+  {% for kpi in kpis %}
+  <li class="kpi">
+    <div class="kpi-value">{{ kpi.value }}</div>
+    <div class="kpi-label">{{ kpi.label }}</div>
+    <div class="kpi-note">{{ kpi.note }}</div>
+  </li>
+  {% endfor %}
+</ul>
+
+<p class="actions">
+  <a href="app/">Try the valuation form</a>
+  <a href="https://github.com/P0w3r223/car-price-ml">Source on GitHub</a>
+  <a href="adr/0001_scope-and-site-expansion.md">The decisions, with their measurements</a>
+  <a href="adr/0002_site-quotes-the-code.md">Why this page quotes the code</a>
+</p>
+
+<h2>What the model refuses to price</h2>
+<p>
+  A price model is easy to make look good and hard to make honest. Every valuation service
+  faces inputs it was never trained on — a make outside the data, a province spelled another
+  way, a diesel with no engine — and the default behaviour of the tools underneath is to
+  answer anyway: <code>TargetEncoder</code> substitutes the global target mean, a one-hot
+  encoder emits an all-zero row. Both come back as a confident number with a
+  <code>200</code>.
+</p>
+<p>
+  So every input domain here is <strong>closed</strong>, stamped into the artifact at
+  training time, served at <code>GET /vocabulary</code>, and enforced at the API boundary.
+  The table is measured, not illustrative: the right-hand column is what this pipeline
+  answers <em>today</em> when the rule is taken out of the way.
+</p>
+<div class="table-wrap">
+<table>
+  <thead>
+    <tr>
+      <th>Input</th>
+      <th>With the closed domain</th>
+      <th>Without it</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for probe in refusals.probes %}
+    <tr>
+      <td><strong>{{ probe.case }}</strong><br><code>{{ probe.input }}</code></td>
+      <td><span class="verdict">{{ probe.rule }}</span></td>
+      <td><span class="was">{{ probe.unguarded }}</span><br>{{ probe.lesson }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+<p class="note">
+  Control car for every row: a {{ metrics.reference_year - refusals.control.age }} Opel Combo,
+  {{ refusals.control.vol_engine }} cm³ diesel, {{ thousands(refusals.control.mileage) }} km,
+  {{ refusals.control.province }} — a real advert listed at 35 900 PLN. The API answers each
+  refusal with a <code>422</code> and names the field; <code>tests/test_api.py</code> holds
+  that to it.
+</p>
+
+<h2>Which model, and by how much</h2>
+<figure>
+  <div class="chart-wrap">{{ charts.bakeoff }}</div>
+  <figcaption>
+    Pooled out-of-fold MAE over {{ metrics.cv_folds }}-fold cross-validation, in PLN, with
+    the fold-to-fold spread as a whisker and the artifact size beside it.
+    <strong>n = {{ thousands(metrics.n_train) }}</strong> adverts.
+  </figcaption>
+</figure>
+<p>{{ accuracy_verdict }}</p>
+
+<h2>What moves a valuation</h2>
+<figure>
+  <div class="chart-wrap">{{ charts.drivers }}</div>
+  <figcaption>
+    Mean |SHAP| per input column over {{ thousands(drivers.sample_size) }} sampled adverts,
+    aggregated back to the column the reader supplies — one-hot turns
+    <code>province</code> into {{ provinces | length }} slots, and charting those beside a
+    single <code>age</code> bar would say location matters least when it has merely been
+    divided {{ provinces | length }} ways.
+  </figcaption>
+</figure>
+<p class="note">
+  The unit is a <strong>log-price contribution, not złoty</strong>. The explainer runs on the
+  regressor inside the <code>TransformedTargetRegressor</code>, which is fit on
+  <code>log1p(price)</code>: these values sum to <code>log1p(prediction)</code> and become
+  multiplicative under <code>expm1</code>. A waterfall reading "+8 400 PLN for age" would be
+  the exact error this project exists to avoid, on its most-viewed page — so there is no
+  waterfall.
+</p>
+
+<h2>What a car loses with age</h2>
+<figure>
+  <div class="chart-wrap">{{ charts.depreciation }}</div>
+  <figcaption>
+    Median advert price per year of age across the cleaned data, up to
+    {{ oldest_bucket }} years. Buckets under n = {{ depreciation.min_bucket_n }} are dropped
+    rather than drawn; the thinnest one shown rests on
+    {{ thousands(thinnest_bucket) }} adverts. This is the data, not the model — it is the
+    non-linearity that a linear baseline cannot follow, which is why the linear model's error
+    is roughly twice the tree ensembles'.
+  </figcaption>
+</figure>
+
+<h2>Method, and what it cannot tell you</h2>
+<div class="card">
+  <p>
+    <strong>Target and features.</strong> Every model trains on <code>log1p(price)</code> and
+    inverts with <code>expm1</code> before any metric, so all numbers here are PLN.
+    <code>age</code> is derived from a fixed anchor rather than the raw model year, and
+    <code>mark</code>/<code>model</code> use out-of-fold target encoding — fitting that
+    encoder on the full dataset is the leakage this design exists to prevent.
+  </p>
+  <p>
+    <strong>Measurement.</strong> {{ metrics.cv_folds }}-fold cross-validation with pooled
+    out-of-fold predictions, reported with the fold-to-fold spread. A gap smaller than the
+    spread is not a better model. The served model is whichever one won that comparison;
+    <code>train.py</code> reads the winner from the measurement instead of hardcoding a name.
+  </p>
+  <p>
+    <strong>The artifact carries its own contract.</strong> Feature list, age anchor and every
+    vocabulary are stamped into the saved bundle, and loading refuses a bundle that disagrees
+    with the code. A stale artifact fails at load rather than at the first valuation.
+  </p>
+  <p class="card caution">
+    <strong>Limits.</strong> The data is a <strong>single January
+    {{ metrics.reference_year }} snapshot</strong>, so every figure here is a
+    {{ metrics.reference_year }} price and is labelled as one rather than rescaled to today —
+    Polish used-car prices fell roughly 10–24 % after it while general inflation ran +41 %, so
+    "adjusting for inflation" would move the numbers the wrong way. The dataset carries no
+    power, gearbox or condition, which is a ceiling on accuracy no model choice moves. And
+    de-duplication removed 9.8 % of the raw rows: with shuffled folds the same advert was
+    landing in train and test, so metrics published before it were optimistic.
+  </p>
+</div>
+
+<h2>The rules, verbatim</h2>
+<p class="note">
+  Each decision below is quoted from the module it lives in, read at build time. A paraphrase
+  can go stale; a quotation cannot.
+</p>
+{% for name, source in rules %}
+<details>
+  <summary>{{ name }}</summary>
+  <pre><code>{{ source }}</code></pre>
+</details>
+{% endfor %}
+
+<footer>
+  <p>
+    Built from the {{ served }} artifact trained
+    <time datetime="{{ metrics.trained_on }}">{{ metrics.trained_on }}</time> on
+    {{ thousands(metrics.n_train) }} adverts{% if metrics.commit %}, commit
+    <code>{{ metrics.commit }}</code>{% endif %} ·
+    <a href="data/metrics.json">the aggregates this page renders</a> ·
+    <a href="https://github.com/P0w3r223/car-price-ml">source on GitHub</a>
+  </p>
+  <p>
+    Data: <a href="https://www.kaggle.com/datasets/aleksandrglotov/car-prices-poland">Car
+    Prices Poland</a> © the Kaggle dataset author, CC0-1.0. A single January
+    {{ metrics.reference_year }} snapshot of Otomoto adverts — an open, published dataset, not
+    a scrape of our own.
+  </p>
+</footer>
+
+</body>
+</html>
