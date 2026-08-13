@@ -3,7 +3,7 @@
 Date: 2026-08-12
 Status: accepted — revised the same day after an independent architecture review and three
 research passes; the revisions are material and are marked **[revised]** below
-Author: P0w3r223 + Claude
+Author: P0w3r223
 Related to: [`docs/research/data-and-methodology.md`](../research/data-and-methodology.md),
 [mlops-car-price](https://github.com/P0w3r223/mlops-car-price) ADR 0001 / ADR 0003
 

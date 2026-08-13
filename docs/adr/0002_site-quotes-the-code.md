@@ -2,7 +2,7 @@
 
 Date: 2026-08-13
 Status: accepted
-Author: P0w3r223 + Claude
+Author: P0w3r223
 Related to: [ADR 0001](0001_scope-and-site-expansion.md) (W6, which this partially
 implements and partially supersedes)
 
