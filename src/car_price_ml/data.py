@@ -42,6 +42,26 @@ def canonical_province(value: object) -> str | None:
     return _PROVINCE_BY_KEY.get(_fold(value))
 
 
+def canonical_mark_or_model(value: object) -> str | None:
+    """Normalise a make or model onto the spelling the dataset uses, or ``None``.
+
+    Unlike the two domains above there is no vocabulary here to match against: which makes
+    and models exist is a property of the fitted artifact, so membership is checked where
+    that artifact is loaded. This only normalises — the dataset spells every make and model
+    in lower case, so "Opel" is a spelling variant of a known car rather than an unknown one,
+    and priced as unknown it came back 14 % high.
+
+    It lives here rather than in the API validator because three callers need the same
+    answer: the service, the published page's refusal table, and any future browser runtime.
+    A hand-copied ``.casefold()`` in each was how the province vocabulary drifted apart in
+    the first place.
+    """
+    if not isinstance(value, str):
+        return None
+    normalised = value.strip().casefold()
+    return normalised or None
+
+
 _FUEL_BY_KEY = {name.casefold(): name for name in config.KNOWN_FUELS}
 
 

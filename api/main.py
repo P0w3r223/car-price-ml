@@ -39,8 +39,14 @@ class CarFeatures(BaseModel):
         The dataset spells every make and model in lower case, so "Opel" is a spelling
         variant rather than a different car — but only the loaded artifact knows which
         values it was fit on, so the domain check lives in the endpoint.
+
+        Delegated rather than done here, so the published page's refusal table can execute
+        the same rule instead of re-implementing it and going stale against it.
         """
-        return value.strip().casefold()
+        normalised = data.canonical_mark_or_model(value)
+        if normalised is None:
+            raise ValueError("must not be blank")
+        return normalised
     fuel: str = Field(max_length=20, examples=["Diesel"])
     province: str = Field(max_length=60, examples=["Mazowieckie"])
     year: int = Field(ge=_MIN_YEAR, le=config.REFERENCE_YEAR, examples=[2015])
