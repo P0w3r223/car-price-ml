@@ -155,8 +155,9 @@
     Polish used-car prices fell roughly 10–24 % after it while general inflation ran +41 %, so
     "adjusting for inflation" would move the numbers the wrong way. The dataset carries no
     power, gearbox or condition, which is a ceiling on accuracy no model choice moves. And
-    de-duplication removed 9.8 % of the raw rows: with shuffled folds the same advert was
-    landing in train and test, so metrics published before it were optimistic.
+    9.8 % of the raw rows sit in exact-duplicate groups, and de-duplication removes 6 470 of
+    them: with shuffled folds the same advert was landing in train and test, so metrics
+    published before it were optimistic.
   </p>
 </div>
 
