@@ -15,8 +15,8 @@ import re
 from fastapi.testclient import TestClient
 
 from api.main import app
-from car_price_ml import config
-from car_price_ml.site import form
+from car_price_ml import config, data
+from car_price_ml.site import browser_model, form
 
 client = TestClient(app)
 
@@ -37,10 +37,6 @@ def _code_only(source: str) -> str:
 
 
 APP_JS_CODE = _code_only(APP_JS)
-
-# The offline heuristic's per-fuel factors: matched once, because two tests need it — one to
-# read it, and one to keep its numbers out of the way while scanning for restated bounds.
-FUEL_FACTORS = re.compile(r"const fuelFactor = \{(.*?)\};", re.DOTALL)
 
 
 def test_root_serves_the_form():
@@ -102,14 +98,9 @@ def test_the_form_keeps_no_copy_of_the_vocabulary():
 
 
 def test_the_form_keeps_no_copy_of_the_numeric_bounds():
-    """Compared as numbers, not substrings: 40 is a substring of the heuristic's 400000.
-
-    The heuristic's factor table is cut out first, and not for convenience: the test below
-    requires that table to grow with ``KNOWN_FUELS``, so a future factor of 1.40 or 0.60
-    would fail *this* test with a message pointing at the wrong part of the file.
-    """
-    scanned = FUEL_FACTORS.sub("", APP_JS_CODE)
-    literals = {int(match.replace("_", "")) for match in re.findall(r"\b\d[\d_]*\b", scanned)}
+    """Compared as numbers, not substrings — a bound can be a substring of an unrelated one."""
+    literals = {int(match.replace("_", ""))
+                for match in re.findall(r"\b\d[\d_]*\b", APP_JS_CODE)}
     bounds = {
         config.REFERENCE_YEAR,
         config.REFERENCE_YEAR - config.AGE_MAX,
@@ -135,23 +126,64 @@ def test_the_form_reads_the_schema_the_generator_writes():
     assert int(declared.group(1)) == form.FORM_CONFIG_SCHEMA
 
 
-def test_the_offline_heuristic_knows_every_fuel_the_form_offers():
-    """Its factor table is the one fuel-name copy left in JavaScript.
+def test_the_form_carries_no_formula_of_its_own():
+    """The offline heuristic is gone, and must not come back.
 
-    The form refuses at runtime for a fuel the table lacks, rather than pricing it as petrol,
-    so a config offering a seventh fuel cannot be answered with a silent default. This test
-    keeps that refusal from being reachable with the *committed* config — a fuel added to
-    ``KNOWN_FUELS`` has to reach the table before it reaches the dropdown.
+    Until the model itself shipped to the browser, this file carried a depreciation formula
+    that answered when no API did. It was labelled a guess everywhere it appeared, which is
+    the most that could be said for it — a page returning a number the model did not produce
+    is answering a question it cannot answer. `docs/app/model.json` removed the reason it
+    existed; this keeps the reason from being re-invented.
     """
-    table = FUEL_FACTORS.search(APP_JS_CODE)
-    assert table, "app.js no longer declares the heuristic's fuel factors"
-    # Quoted keys accepted too, so a fuel that is not a bare identifier ("Plug-in Hybrid")
-    # fails this test by being absent rather than by being unreadable.
-    # Over the whole declaration, braces included: the first key is preceded by `{`, not by a
-    # comma, and matching only the inside would silently drop it.
-    priced = set(re.findall(r'[{,]\s*"?([\w\- ]+?)"?\s*:', table.group(0)))
+    for trace in ("fuelFactor", "heuristic", "Math.pow"):
+        assert trace not in APP_JS_CODE, f"app.js prices something itself again ({trace})"
 
-    assert priced == set(config.KNOWN_FUELS)
+
+def test_the_form_and_the_model_declare_the_same_domains():
+    """Two generated files reach the form, and they must not disagree about what is valid.
+
+    `config.json` carries the domains declared in `config.py`; `model.json` carries the ones
+    the fitted encoder was built on. A divergence means one was regenerated and the other was
+    not — and the form would validate against one list while the model priced from the other.
+    """
+    served = json.loads(client.get("/config.json").text)
+    exported = json.loads((config.SITE_APP_DIR / "model.json").read_text(encoding="utf-8"))
+    one_hot = {step["field"]: step["categories"]
+               for step in exported["plan"] if step["kind"] == "one_hot"}
+
+    assert one_hot["fuel"] == served["fuels"]
+    assert one_hot["province"] == served["provinces"]
+    assert exported["reference_year"] == served["reference_year"]
+
+
+def test_the_browsers_spelling_rule_still_matches_the_pythons():
+    """`app.js` lower-cases make and model; `data.canonical_mark_or_model` is the rule of record.
+
+    The form normalises before it checks the vocabulary, so the two must agree about what a
+    given spelling *is* — the province vocabulary drifted apart on exactly this kind of
+    hand-copied rule. Pinned by the vocabulary itself rather than by re-implementing the
+    function: every value the model knows must already be its own canonical form, so a Python
+    rule that started doing more than case-folding would fail here.
+    """
+    assert ".toLowerCase()" in APP_JS_CODE
+    exported = json.loads((config.SITE_APP_DIR / "model.json").read_text(encoding="utf-8"))
+    known = [value for step in exported["plan"] if step["kind"] == "target_encode"
+             for value in step["map"]]
+
+    assert known, "the exported model carries no make/model vocabulary"
+    for value in known:
+        assert data.canonical_mark_or_model(value) == value, (
+            f"{value!r} is not what the API would normalise it to, so the browser's "
+            f"lower-casing and the Python rule no longer agree"
+        )
+
+
+def test_the_model_and_its_runtime_are_served():
+    """Both are fetched from this origin at load; a 404 on either is a dead form."""
+    assert client.get("/predict.js").status_code == 200
+    model = client.get("/model.json")
+    assert model.status_code == 200
+    assert model.json()["schema"] == browser_model.BROWSER_MODEL_SCHEMA
 
 
 def test_the_form_ships_disabled():
