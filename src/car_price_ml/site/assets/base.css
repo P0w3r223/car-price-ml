@@ -1,0 +1,89 @@
+/* Everything both published pages share: page frame, typography, cards, footer. The report
+   adds charts and tables on top of this; the form adds inputs. Neither restates it. */
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  max-width: 62rem;
+  margin: 0 auto;
+  padding: 2.5rem 1.25rem 4rem;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+}
+
+a { color: var(--accent); }
+a:focus-visible, summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+  margin: 0 0 0.5rem;
+}
+
+h1 {
+  font-size: clamp(1.75rem, 1.2rem + 2.2vw, 2.75rem);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  margin: 0 0 0.75rem;
+}
+
+h2 {
+  font-size: 1.3rem;
+  letter-spacing: -0.01em;
+  margin: 2.75rem 0 0.35rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+h2:first-of-type { border-top: none; padding-top: 0; }
+h3 { font-size: 1rem; margin: 1.5rem 0 0.25rem; }
+p { margin: 0.5rem 0; }
+.lead { font-size: 1.1rem; color: var(--muted); max-width: 46rem; }
+.note { color: var(--muted); font-size: 0.9rem; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.2rem;
+  margin: 1.25rem 0;
+}
+
+.card.caution { border-left: 3px solid var(--warn); }
+
+.actions { display: flex; flex-wrap: wrap; gap: 0.6rem; margin: 1.5rem 0; }
+.actions a {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.5rem 0.9rem;
+  text-decoration: none;
+  background: var(--surface);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+code { font-size: 0.9em; }
+
+footer {
+  margin-top: 3rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+@media print {
+  body { max-width: none; }
+  details { display: none; }
+}

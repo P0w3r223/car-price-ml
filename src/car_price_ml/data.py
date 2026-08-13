@@ -166,7 +166,7 @@ def has_plausible_displacement(fuel: object, vol_engine: float) -> bool:
     different modules, and a rule applied on only one side is worse than no rule: the model
     then has no combustion-with-zero-displacement example to reason from, yet still answers.
     """
-    return vol_engine > 0 or fuel == "Electric"
+    return vol_engine > 0 or fuel == config.ELECTRIC_FUEL
 
 
 def drop_missing_displacement(df: pd.DataFrame) -> pd.DataFrame:
@@ -176,7 +176,7 @@ def drop_missing_displacement(df: pd.DataFrame) -> pd.DataFrame:
     means "expensive EV" and misprices exactly those cars. Vectorised for the 118k-row load;
     ``test_displacement_rule_agrees_across_implementations`` pins it to the scalar rule.
     """
-    is_electric = df["fuel"] == "Electric"
+    is_electric = df["fuel"] == config.ELECTRIC_FUEL
     return df[is_electric | (df["vol_engine"] > 0)].reset_index(drop=True)
 
 

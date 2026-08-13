@@ -1,0 +1,43 @@
+/* The palette, and nothing else. Both colour schemes are first-class: dark mode swaps the
+   variables rather than restating the design, and the charts inherit them too — which is the
+   main reason they are SVG and not the embedded PNGs this page used to carry.
+
+   Kept in its own file because two pages are built from it: the report and the valuation
+   form. They used to be two stylesheets with two palettes, so following the report's own
+   "Try the valuation form" link landed the reader on a visually different site with no dark
+   mode at all.
+
+   The token names are shared with the other projects in this portfolio on purpose — one
+   visual system, not five. */
+:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --surface: #f6f8fa;
+  --border: #e3e7ee;
+  --text: #1c2430;
+  --muted: #5b6472;
+  --accent: #2563eb;
+  --accent-soft: #93c5fd;
+  --positive: #059669;
+  --warn: #b45309;
+  /* Distinct from --warn on purpose: the form has two different bad states, and colouring
+     them alike would say a refused input and a heuristic answer are the same kind of event.
+     One is the user's to fix, the other is the deployment's. */
+  --danger: #b42318;
+  --radius: 10px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1319;
+    --surface: #161c25;
+    --border: #263041;
+    --text: #e6eaf2;
+    --muted: #98a3b6;
+    --accent: #6ea8fe;
+    --accent-soft: #2c4a7c;
+    --positive: #34d399;
+    --warn: #fbbf24;
+    --danger: #f87171;
+  }
+}
