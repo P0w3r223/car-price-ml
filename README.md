@@ -51,8 +51,8 @@ Notebook: [`notebooks/01_eda_and_model.ipynb`](notebooks/01_eda_and_model.ipynb)
 
 **Note.** The page is rendered from `docs/data/*.json`, which are committed; producing those
 needs the trained model + dataset (both kept out of git/CI), so `python -m
-car_price_ml.site.export` runs locally. CI runs the test suite **and** rebuilds the page,
-failing if it no longer matches its inputs.
+car_price_ml.site.export` runs locally. CI runs the test suite **and** rebuilds the page and
+the form's generated files, failing if any of them no longer matches its inputs.
 
 ## Project structure
 
@@ -81,7 +81,8 @@ python -m car_price_ml.train    # bake-off, then train + save whichever model wo
 # serve it
 uvicorn api.main:app --reload    # POST /predict   (or: docker build -t car-price-ml . && docker run -p 8000:8000 car-price-ml)
 
-# republish the site: measure, then render (the `[site]` extra installs Jinja2)
+# republish the site: measure, then render the page + the form's generated files
+# (the `[site]` extra installs Jinja2)
 python -m car_price_ml.site.export
 python -m car_price_ml.site.build
 ```
@@ -92,8 +93,9 @@ A dependency-free **vanilla-JavaScript** valuation form (`docs/app/`) that `fetc
 `/predict` endpoint and renders the price with client-side validation and error handling.
 `fuel` and `province` are **closed vocabularies**: the service normalises spelling and
 casing but answers anything outside the domain with a `422`, rather than pricing the car
-from an all-zero category block. A test asserts the form's lists and `config.py` hold
-identical strings.
+from an all-zero category block. The form holds no copy of them — every vocabulary and bound
+it validates against is generated from `config.py` into `docs/app/config.json`, and without
+that file the form refuses to run rather than falling back to constants of its own.
 When the API is running it is served at the site root — same origin as `/predict`, so no
 CORS — giving **real model predictions** in the browser:
 

@@ -18,7 +18,9 @@
   --muted: #5b6472;
   --accent: #2563eb;
   --accent-soft: #93c5fd;
-  --positive: #059669;
+  /* Darker than the obvious #059669, which measures 3.5:1 on --surface — below AA for text
+     this size, and it is the label on the one state a reader has to be able to trust. */
+  --positive: #047857;
   --warn: #b45309;
   /* Distinct from --warn on purpose: the form has two different bad states, and colouring
      them alike would say a refused input and a heuristic answer are the same kind of event.
