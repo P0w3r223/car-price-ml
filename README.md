@@ -100,7 +100,7 @@ notebooks/              # EDA + feature engineering
 api/                    # FastAPI service (also serves the web form, same-origin)
 tests/                  # pytest
 docs/data/              # the committed aggregates the published page renders from
-docs/app/               # vanilla-JS valuation form; config.json + styles.css are generated
+docs/app/               # vanilla-JS valuation form + the model it runs (predict.js, model.json)
 docs/adr/               # design decisions, each with the measurements behind it
 docs/research/          # data sources, methodology, temporal recalibration
 ```
@@ -119,10 +119,9 @@ python -m car_price_ml.train    # bake-off, then train + save whichever model wo
 # serve it
 uvicorn api.main:app --reload    # POST /predict   (or: docker build -t car-price-ml . && docker run -p 8000:8000 car-price-ml)
 
-# republish the site: measure, then render the page + the form's generated files
-# (the `[site]` extra installs Jinja2)
-python -m car_price_ml.site.export
-python -m car_price_ml.site.build
+# republish the site: measure, then render (the `[site]` extra installs Jinja2)
+python -m car_price_ml.site.export   # docs/data/*.json + the browser model and its fixture
+python -m car_price_ml.site.build    # docs/index.html + the form's config and stylesheet
 ```
 
 ## Web frontend
