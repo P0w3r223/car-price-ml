@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "fuels": [
+    "CNG",
+    "Diesel",
+    "Electric",
+    "Gasoline",
+    "Hybrid",
+    "LPG"
+  ],
+  "provinces": [
+    "Dolnośląskie",
+    "Kujawsko-pomorskie",
+    "Lubelskie",
+    "Lubuskie",
+    "Łódzkie",
+    "Małopolskie",
+    "Mazowieckie",
+    "Opolskie",
+    "Podkarpackie",
+    "Podlaskie",
+    "Pomorskie",
+    "Śląskie",
+    "Świętokrzyskie",
+    "Warmińsko-mazurskie",
+    "Wielkopolskie",
+    "Zachodniopomorskie"
+  ],
+  "reference_year": 2022,
+  "year_min": 1982,
+  "year_max": 2022,
+  "mileage_max": 1000000,
+  "vol_engine_max": 8000,
+  "mark_max_length": 40,
+  "model_max_length": 60,
+  "electric_fuel": "Electric"
+}

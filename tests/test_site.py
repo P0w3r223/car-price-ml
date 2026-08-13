@@ -16,7 +16,7 @@ from markupsafe import escape
 
 from car_price_ml import config
 from car_price_ml import model as model_module
-from car_price_ml.site import build, charts, export
+from car_price_ml.site import build, charts, export, form, stylesheet
 
 
 @pytest.fixture(scope="module")
@@ -343,3 +343,39 @@ def test_export_refuses_a_served_model_with_no_recorded_size(monkeypatch):
     monkeypatch.setitem(export.RECORDED_ARTIFACT_BYTES, "LightGBM", None)
     with pytest.raises(export.ExportError, match="no recorded artifact size"):
         export._artifact_sizes("LightGBM", config.MODELS_DIR)
+
+
+# --- the valuation form's generated inputs -----------------------------------------------
+
+def test_the_committed_form_assets_match_the_source():
+    """Locally what CI checks by rebuilding: the committed files are the generated ones.
+
+    Without this, the guard only fires in CI — after a page and a form built from two
+    different commits of the same constants have already been pushed.
+    """
+    committed_config = (config.SITE_APP_DIR / "config.json").read_text(encoding="utf-8")
+    committed_styles = (config.SITE_APP_DIR / "styles.css").read_text(encoding="utf-8")
+
+    assert json.loads(committed_config) == form.config_payload()
+    assert committed_styles == stylesheet(*form.FORM_STYLESHEET_PARTS)
+
+
+def test_the_form_assets_are_written_with_lf(tmp_path):
+    for path in form.write(out_dir=tmp_path):
+        assert b"\r\n" not in path.read_bytes()
+
+
+def test_both_pages_are_built_from_the_same_palette():
+    """One visual system, not two.
+
+    The form used to carry its own stylesheet with its own colours and no dark mode at all,
+    so following the report's "Try the valuation form" link landed the reader on what looked
+    like a different site.
+    """
+    tokens = stylesheet("tokens.css")
+    report_styles = stylesheet(*build.REPORT_STYLESHEET_PARTS)
+    form_styles = stylesheet(*form.FORM_STYLESHEET_PARTS)
+
+    assert tokens.strip() in report_styles
+    assert tokens.strip() in form_styles
+    assert "prefers-color-scheme: dark" in tokens

@@ -20,11 +20,12 @@ jobs:
           pip install -e .[site] pytest httpx
       - name: Run tests
         run: pytest
-      # The published page must be a function of the committed aggregates. Rebuilding it here
-      # and demanding no diff is what makes that a fact rather than an intention: a page
-      # edited by hand, or one built from aggregates that were never committed, fails here
-      # instead of going live saying something the model does not.
+      # The published page must be a function of the committed aggregates, and the valuation
+      # form's bounds a function of config.py. Rebuilding both here and demanding no diff is
+      # what makes that a fact rather than an intention: a page edited by hand, one built from
+      # aggregates that were never committed, or a form still validating against last month's
+      # vocabulary fails here instead of going live saying something the model does not.
       - name: The published page still matches its inputs
         run: |
           python -m car_price_ml.site.build
-          git diff --exit-code -- docs/index.html
+          git diff --exit-code -- docs/index.html docs/app/styles.css docs/app/config.json
