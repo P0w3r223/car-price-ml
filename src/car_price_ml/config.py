@@ -32,6 +32,13 @@ PROCESSED_DIR = DATA_DIR / "processed"
 MODELS_DIR = _dir_from_env("CAR_PRICE_MODELS_DIR", PROJECT_ROOT / "models")
 FIGURES_DIR = _dir_from_env("CAR_PRICE_FIGURES_DIR", PROJECT_ROOT / "reports" / "figures")
 
+# The published site and the small aggregates it is rendered from. Split deliberately: the
+# aggregates are committed, so the page can be rebuilt (and diffed) from inputs that are in
+# the repository, while producing them needs the 14 MB artifact and the dataset, which are
+# not. Only `site.export` writes SITE_DATA_DIR; only `site.build` reads it.
+DOCS_DIR = _dir_from_env("CAR_PRICE_DOCS_DIR", PROJECT_ROOT / "docs")
+SITE_DATA_DIR = DOCS_DIR / "data"
+
 # --- Dataset -----------------------------------------------------------------
 KAGGLE_DATASET = "aleksandrglotov/car-prices-poland"  # CC0-1.0; attribute in README
 DATASET_CSV = RAW_DIR / "Car_Prices_Poland_Kaggle.csv"

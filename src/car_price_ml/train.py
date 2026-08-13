@@ -4,7 +4,8 @@
 
 Runs the k-fold bake-off, trains whichever model won it on all data, and saves it with the
 full CV metrics as metadata — so the deployed model is reproducible from the repo and the
-report/site can render metrics from the artifact rather than hardcoding them.
+published site can render its numbers from the artifact rather than hardcoding them
+(``car_price_ml.site.export`` reads exactly this metadata).
 """
 
 from __future__ import annotations
