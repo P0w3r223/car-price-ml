@@ -8,6 +8,11 @@ docs/data/*.json text eol=lf
 # form's stylesheet and the bounds it validates against.
 docs/app/styles.css text eol=lf
 docs/app/config.json text eol=lf
+# The hand-written half of the form, pinned for the same reason: a Windows checkout otherwise
+# holds CRLF while the committed blob (and therefore the published page) holds LF, so any
+# byte-level comparison against the live site reports a difference no commit caused.
+docs/app/*.html text eol=lf
+docs/app/*.js text eol=lf
 # Not diffed by CI — regenerating them needs the artifact and the dataset — but they are read
 # by the parity test on Linux, and the exported model is compared against the fixture by
 # value, so keeping both in one line ending keeps the failure modes to real ones.
