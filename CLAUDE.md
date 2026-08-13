@@ -24,11 +24,12 @@ src/car_price_ml/
   train.py      # entrypoint: vintage check → bake-off → train the winner → save
   figures.py    # the notebook's matplotlib figures, redrawn from the current data/model
   site/
-    export.py   # measures what the page publishes -> docs/data/*.json (needs artifact + data)
-    charts.py   # inline SVG; refuses to draw a MAE without its fold spread
-    build.py    # renders docs/index.html from those committed aggregates alone
-    form.py     # writes docs/app/{config.json,styles.css} from config.py alone
-    assets/     # tokens.css (shared palette) + base.css, then report.css / form.css
+    export.py       # measures what the page publishes -> docs/data/*.json (needs artifact + data)
+    charts.py       # inline SVG; refuses to draw a MAE without its fold spread
+    build.py        # renders docs/index.html from those committed aggregates alone
+    form.py         # writes docs/app/{config.json,styles.css} from config.py alone
+    browser_model.py # exports the served model + the parity fixture (needs artifact + data)
+    assets/         # tokens.css (shared palette) + base.css, then report.css / form.css
 api/            # FastAPI /predict + /vocabulary service, serving docs/app at its root
 tests/          # pytest
 docs/data/      # the committed aggregates the page is rendered from
@@ -48,6 +49,17 @@ vocabulary and no bound, and refuses to run at all if that file is missing, stal
 incomplete. It is emitted beside the form (not into `docs/data/`) because the API mounts
 `docs/app` at its root, so a sibling path resolves in both deployments. Both generated files
 are under the same CI diff guard as the page.
+
+The form also **runs the model**. `docs/app/model.json` is the served booster as parallel
+arrays plus the preprocessing expressed as an ordered plan, and `docs/app/predict.js` walks
+that plan — so the page prices a car with the same 1 200 trees the API does, and the offline
+heuristic it used to answer with is gone. Three implementations now exist (pipeline, export,
+JavaScript), so `tests/fixtures/browser_parity.json` holds all three to the same prices,
+including cases a sample never contains: both ends of every bound, one car per province, a
+value sitting exactly on a split threshold, and the four inputs that must be refused. The
+JavaScript leg runs under Node in CI and skips locally. The export refuses to write a payload
+whose columns disagree with the fitted transformer's, or whose prices disagree with the
+pipeline's by more than a grosz.
 
 ## Methodology rules
 
@@ -114,7 +126,7 @@ are under the same CI diff guard as the page.
 kaggle datasets download -d aleksandrglotov/car-prices-poland -p data/raw --unzip
 pytest
 python -m car_price_ml.train        # bake-off, then train and save the winner
-python -m car_price_ml.site.export  # measure what the page publishes -> docs/data/*.json
+python -m car_price_ml.site.export  # docs/data/*.json + the browser model and its fixture
 python -m car_price_ml.site.build   # render docs/index.html + the form's generated inputs
 python -m car_price_ml.figures      # redraw the notebook's figures from the current data/model
 ```

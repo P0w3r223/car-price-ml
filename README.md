@@ -141,20 +141,25 @@ CORS — giving **real model predictions** in the browser:
 uvicorn api.main:app        # then open http://localhost:8000/
 ```
 
-An interactive copy also lives on GitHub Pages:
-**<https://p0w3r223.github.io/car-price-ml/app/>**. Because the model API is not publicly
-hosted, that online demo answers with an **offline heuristic** — a formula in `app.js`, not
-the trained model. The form says so *above* the input fields, before a price exists: it probes
-the service at load and reports which of three things is true (a model is answering, the
-service is up with no model, or no API is reachable). A heuristic answer is then also shaped
-differently from a prediction — dashed border, lighter, approximate figure — rather than
-carrying a differently-coloured badge on the same card.
+An interactive copy lives on GitHub Pages:
+**<https://p0w3r223.github.io/car-price-ml/app/>**, and it runs the model — the API is not
+publicly hosted, so `docs/app/model.json` carries the served booster as parallel arrays plus
+the preprocessing as an ordered plan, and `predict.js` walks it. 1 200 trees, 2.3 MB over the
+wire, no API and no framework. The form says which path answered above the fields and again
+beside the price.
 
-One caveat the headline of this README does not cover: the heuristic knows nothing about makes
-and models, and the static demo has no vocabulary to check them against — only the API does.
-So on Pages an unknown make still produces a (labelled) estimate, where the service would
-answer `422`. Refusing an unknown car is a property of the model's boundary, not of the
-fallback that stands in for it.
+That the two paths are the same model is a checked claim rather than an intention. A golden
+fixture of 53 cars — sampled adverts plus both ends of every bound, one car per province and
+per fuel, an EV with no displacement, values sitting exactly on a split threshold, and four
+inputs that must be refused — is priced by the Python pipeline, by the exported payload and
+by `predict.js` under Node, and the three must agree to within a grosz (measured: 4e-06 PLN).
+The export refuses to write a payload whose columns disagree with the fitted transformer's, or
+whose prices disagree with the pipeline's.
+
+This is also what closed the last gap in the sentence at the top of this README: the demo used
+to answer with a labelled heuristic that knew nothing about makes, so an unknown car still got
+a number there. The page now carries the model's own vocabulary and refuses it, exactly where
+the service answers `422`.
 
 ## Methodology notes
 

@@ -15,11 +15,17 @@ const REQUIRED_NUMBERS = [
   "mark_max_length", "model_max_length",
 ];
 
+// The served model itself, exported by `car_price_ml.site.browser_model` and interpreted by
+// predict.js. This replaced an "offline heuristic" — a formula in this file, labelled as a
+// guess, which is what the published demo used to answer with. There is no guess left here:
+// the page runs the same 1 200 trees the API runs, and a fixture holds all three
+// implementations to the same prices.
+const MODEL_URL = "model.json";
+
 // Same-origin absolute paths: real when the API serves this directory at its root, absent on
 // the static GitHub Pages copy — which the banner reports before the first submit rather than
 // after it.
 const PREDICT_PATH = "/predict";
-const VOCABULARY_PATH = "/vocabulary";
 const HEALTH_PATH = "/health";
 
 const pln = new Intl.NumberFormat("pl-PL", {
@@ -29,10 +35,11 @@ const pln = new Intl.NumberFormat("pl-PL", {
 });
 
 let CONFIG = null;
-// What will answer this form: "model" (a trained artifact is loaded), "no-model" (the service
-// is up but unservable) or "absent" (no API at this origin). Probed at load, and corrected if
-// a submit turns out to disagree with the probe.
-let backend = "absent";
+let MODEL = null; // the exported model, once predict.js has it loaded
+// Which of the two paths answers a submission: "api" (the service, when it has a model) or
+// "browser" (the exported model, running here). Both are the same 1 200 trees; the banner says
+// which one, because "where was this computed" is a question the reader is entitled to ask.
+let backend = "browser";
 
 // --- Configuration ----------------------------------------------------------
 
@@ -79,6 +86,18 @@ async function loadConfig() {
   return payload;
 }
 
+// --- The model ---------------------------------------------------------------
+
+// 2.3 MB over the wire and around 8.5 MB parsed, so it is fetched once at load and the submit
+// button waits for it. Failing to load is not fatal on its own: if the API is there with a
+// model, it can answer instead. What is fatal is *nothing* being able to answer, which is the
+// state `init` refuses in rather than filling with a formula.
+async function loadModel() {
+  const response = await fetch(MODEL_URL);
+  if (!response.ok) throw new Error(`model.json answered ${response.status}`);
+  return createModel(await response.json());
+}
+
 // --- Rendering helpers ------------------------------------------------------
 
 function element(tag, className, text) {
@@ -96,29 +115,28 @@ function renderCard(target, className, label, children) {
   target.replaceChildren(element("span", label.className, label.text), ...children);
 }
 
+function trainedDescription() {
+  if (!MODEL) return "";
+  return `${MODEL.servedModel}, ${MODEL.treeCount.toLocaleString("en")} trees trained on `
+       + `${MODEL.trainedOn.toLocaleString("en")} adverts (${MODEL.trainedAt}).`;
+}
+
 function renderStatus(kind) {
   const status = document.getElementById("status");
+  const dated = `Prices are ${CONFIG.reference_year} market prices — the data is a single `
+              + `January ${CONFIG.reference_year} snapshot, so they are not today's.`;
   const states = {
-    model: {
+    api: {
       className: "card status live",
-      label: "Live model",
-      note: `A trained model is answering this form. Prices are ${CONFIG.reference_year} ` +
-            `market prices — the dataset is a single January ${CONFIG.reference_year} ` +
-            `snapshot, so they are not today's.`,
+      label: "Answered by the prediction API",
+      note: `The service is running and has a model loaded, so it answers. ${dated}`,
     },
-    "no-model": {
-      className: "card status offline",
-      label: "No model loaded — answers will be guesses",
-      note: "The prediction API is running but could not load an artifact, so anything you " +
-            "submit is priced by a rough formula in app.js rather than by the model. Train " +
-            "one (python -m car_price_ml.train) and restart the service.",
-    },
-    absent: {
-      className: "card status offline",
-      label: "Static demo — answers will be guesses",
-      note: "No prediction API is reachable from this page, so anything you submit is " +
-            "priced by a rough formula in app.js rather than by the model. Run the service " +
-            "(uvicorn api.main:app) for a real valuation.",
+    browser: {
+      className: "card status live",
+      label: "The model runs in this page",
+      note: `No prediction API here, so the model itself was downloaded and runs on your `
+          + `machine — not an approximation of it: ${trainedDescription()} A fixture holds `
+          + `this runtime, the service and the Python pipeline to the same prices. ${dated}`,
     },
   };
   const state = states[kind];
@@ -144,19 +162,15 @@ function renderProblems(messages) {
              [list]);
 }
 
-function renderPrediction(price, asOf) {
+function renderPrediction(price, asOf, where) {
+  const computed = where === "api"
+    ? "Computed by the prediction API."
+    : `Computed here, in your browser, by ${trainedDescription()}`;
   renderCard(document.getElementById("result"), "card result prediction",
              { className: "result-label", text: "Model prediction" },
              [element("p", "price", pln.format(price)),
               element("p", "note", `At ${asOf} market prices, which is the vintage of the `
-                                   + `data this model was trained on.`)]);
-}
-
-function renderEstimate(price, note) {
-  renderCard(document.getElementById("result"), "card result estimate",
-             { className: "result-label", text: "Offline estimate — not a model prediction" },
-             [element("p", "price", `≈ ${pln.format(price)}`),
-              element("p", "note", note)]);
+                                   + `data this model was trained on. ${computed}`)]);
 }
 
 // --- The form ---------------------------------------------------------------
@@ -216,13 +230,23 @@ function validate(car) {
   const problems = [];
   const isInt = (n) => Number.isInteger(n);
 
-  if (!car.mark) problems.push("Make is required.");
-  else if (car.mark.length > CONFIG.mark_max_length) {
-    problems.push(`Make is too long (max ${CONFIG.mark_max_length} characters).`);
-  }
-  if (!car.model) problems.push("Model is required.");
-  else if (car.model.length > CONFIG.model_max_length) {
-    problems.push(`Model is too long (max ${CONFIG.model_max_length} characters).`);
+  // Make and model are checked against the model's own vocabulary when it is loaded here.
+  // Before this file carried the model, the page had no way to know them and the caveat was
+  // real: on GitHub Pages an unknown make still got a number. Now the page refuses it exactly
+  // where the API answers 422, from the same list — read off the fitted encoder at export.
+  const known = (field) => (MODEL ? MODEL.vocabulary[field] : null);
+  for (const [field, label, limit] of [
+    ["mark", "Make", CONFIG.mark_max_length], ["model", "Model", CONFIG.model_max_length],
+  ]) {
+    const value = car[field];
+    const vocabulary = known(field);
+    if (!value) problems.push(`${label} is required.`);
+    else if (value.length > limit) {
+      problems.push(`${label} is too long (max ${limit} characters).`);
+    } else if (vocabulary && !vocabulary.includes(value)) {
+      problems.push(`${label} "${value}" is not one of the ${vocabulary.length} the model was `
+                    + `trained on — it cannot be priced, only guessed at.`);
+    }
   }
   if (!CONFIG.fuels.includes(car.fuel)) problems.push("Pick a fuel type.");
   // Membership, not just emptiness: the API answers an unknown province with a 422, so the
@@ -245,28 +269,6 @@ function validate(car) {
     problems.push(`Engine capacity of 0 is only valid for ${CONFIG.electric_fuel}.`);
   }
   return problems;
-}
-
-// A transparent, rough fallback used only when no model is answering. It is NOT the trained
-// model — just a plausible-looking heuristic, labelled as one everywhere it appears.
-function heuristicEstimate(car) {
-  const fuelFactor = {
-    Gasoline: 1.0, Diesel: 1.15, Hybrid: 1.35, Electric: 1.5, LPG: 0.9, CNG: 0.85,
-  };
-  const factor = fuelFactor[car.fuel];
-  // A fuel this table does not know is refused rather than priced as petrol. The table is
-  // the heuristic's own invention, so it is the one place a config offering a seventh fuel
-  // would otherwise be answered with a silent default — and a labelled guess is still a
-  // number the reader takes away.
-  if (factor === undefined) {
-    throw new Error(`the offline heuristic has no factor for ${car.fuel}`);
-  }
-  let price = 6000 + car.vol_engine * 22;
-  price *= factor;
-  const age = CONFIG.reference_year - car.year;
-  price *= Math.pow(0.92, Math.max(0, age)); // ~8% per year
-  price *= Math.max(0.25, 1 - car.mileage / 400000); // mileage wear
-  return Math.max(2000, Math.round(price));
 }
 
 // --- The service ------------------------------------------------------------
@@ -299,8 +301,10 @@ async function probeBackend() {
   const body = await response.json().catch(() => null);
   // A 200 that is not this API's health payload (a static host answering with a page, a proxy
   // interstitial) is not evidence of a service — reporting it as one would promise a model.
-  if (!body || typeof body.model_loaded !== "boolean") return "absent";
-  return body.model_loaded ? "model" : "no-model";
+  if (!body || typeof body.model_loaded !== "boolean") return "browser";
+  // A service that is up but could not load its artifact answers 503, and the page can do
+  // better than that: it has the model. So only a *serving* API takes precedence.
+  return body.model_loaded ? "api" : "browser";
 }
 
 /**
@@ -317,7 +321,7 @@ async function predictViaApi(car) {
       body: JSON.stringify(car),
     });
   } catch {
-    return { unavailable: "absent" }; // network error — no API here (e.g. the Pages demo)
+    return { unavailable: true }; // network error — no API here (e.g. the Pages demo)
   }
 
   if (response.ok) {
@@ -326,7 +330,7 @@ async function predictViaApi(car) {
     // and this market moved after the snapshot the model was trained on.
     if (!body || typeof body.predicted_price_pln !== "number"
         || typeof body.valuation_as_of !== "number") {
-      return { unavailable: "absent" };
+      return { unavailable: true };
     }
     return { price: body.predicted_price_pln, asOf: body.valuation_as_of };
   }
@@ -338,26 +342,18 @@ async function predictViaApi(car) {
       : (body && typeof body.detail === "string" ? body.detail : "the API rejected the input");
     throw new ValidationError(detail);
   }
-  // 503 means the service answered and has no model — a deployment fault, not an absent API.
-  // Reporting it as "unreachable" once hid a container that could never load its artifact.
-  if (response.status === 503) return { unavailable: "no-model" };
-  return { unavailable: "absent" }; // 404, 5xx, … -> no model answered
+  // Everything else — 503 from a service with no artifact, a 404, a 5xx — means the API did
+  // not answer this. The page can, with the same model, so it is not an error state.
+  return { unavailable: true };
 }
 
-/** Offer what the model can actually price, when something knows. */
-async function fillVocabularyHints() {
-  let vocabulary;
-  try {
-    const response = await fetch(VOCABULARY_PATH);
-    if (!response.ok) return;
-    vocabulary = await response.json();
-  } catch {
-    return; // no API here
-  }
+/** Offer what the model can price, read off the model itself. */
+function fillVocabularyHints() {
+  if (!MODEL) return;
   for (const field of ["mark", "model"]) {
     const list = document.getElementById(`${field}-options`);
-    if (!list || !Array.isArray(vocabulary[field])) continue;
-    list.replaceChildren(...vocabulary[field].map((value) => {
+    if (!list) continue;
+    list.replaceChildren(...MODEL.vocabulary[field].map((value) => {
       const option = document.createElement("option");
       option.value = value;
       return option;
@@ -366,13 +362,6 @@ async function fillVocabularyHints() {
 }
 
 // --- Wiring -----------------------------------------------------------------
-
-const HEURISTIC_NOTE = {
-  "no-model": "The API is running but has no model loaded, so this number comes from a rough "
-              + "formula in app.js. It carries no accuracy claim.",
-  absent: "No prediction API answered, so this number comes from a rough formula in app.js. "
-          + "It carries no accuracy claim.",
-};
 
 async function onSubmit(event) {
   event.preventDefault();
@@ -386,31 +375,39 @@ async function onSubmit(event) {
 
   const button = document.getElementById("submit");
   button.disabled = true;
-  button.textContent = "Estimating…";
+  button.textContent = "Valuing…";
   try {
-    const prediction = await predictViaApi(car);
-    if (typeof prediction.price === "number") {
-      renderPrediction(prediction.price, prediction.asOf);
-      if (backend !== "model") {
-        backend = "model";
-        renderStatus(backend);
-      }
+    // The service first when it has a model — it is the artifact of record, and its answer
+    // carries the vintage it was fit on. Otherwise the same model, here.
+    const served = backend === "api" ? await predictViaApi(car) : { unavailable: true };
+    if (typeof served.price === "number") {
+      renderPrediction(served.price, served.asOf, "api");
     } else {
       // What actually happened outranks what the probe found at load: a service that has gone
       // away since then must change the banner, not just this one answer.
-      if (backend !== prediction.unavailable) {
-        backend = prediction.unavailable;
+      if (backend !== "browser") {
+        backend = "browser";
         renderStatus(backend);
       }
-      renderEstimate(heuristicEstimate(car), HEURISTIC_NOTE[backend]);
+      renderPrediction(MODEL.predict(toModelInput(car)), CONFIG.reference_year, "browser");
     }
   } catch (error) {
     if (error instanceof ValidationError) renderProblems([error.message]);
-    else renderProblems([`Unexpected error: ${error.message}`]);
+    else if (error instanceof UnknownValue) {
+      // The runtime refusing something validation let through: a disagreement between the two
+      // lists, which must surface as itself rather than as an "unexpected error".
+      renderProblems([`The model cannot price this ${error.field}: ${error.value}.`]);
+    } else renderProblems([`Unexpected error: ${error.message}`]);
   } finally {
     button.disabled = false;
-    button.textContent = "Estimate price";
+    button.textContent = "Value this car";
   }
+}
+
+/** The request shape uses `year`; the model was trained on `age` from a fixed anchor. */
+function toModelInput(car) {
+  const { year, ...rest } = car;
+  return { ...rest, age: CONFIG.reference_year - year };
 }
 
 async function init() {
@@ -428,13 +425,28 @@ async function init() {
   applyBounds();
   document.getElementById("valuation").addEventListener("submit", onSubmit);
 
+  let modelFailure = null;
+  try {
+    MODEL = await loadModel();
+  } catch (error) {
+    MODEL = null;
+    modelFailure = error.message;
+  }
+
   backend = await probeBackend();
+  // Neither path can answer: refuse, rather than reaching for something that can produce a
+  // number anyway. This page had such a something until this change, and it was the only part
+  // of the project that answered a question it could not answer.
+  if (!MODEL && backend !== "api") {
+    renderUnavailable(`the model could not be loaded (${modelFailure})`);
+    return;
+  }
+
+  fillVocabularyHints();
   renderStatus(backend);
   // Only now: between the button opening and the banner arriving, a fast submit would have
-  // been answered by the heuristic while the banner still said "Checking…" — which is the
-  // order this change exists to reverse.
+  // been answered while the banner still said "Checking…" — which is the order this reverses.
   document.getElementById("submit").disabled = false;
-  if (backend === "model") await fillVocabularyHints();
 }
 
 document.addEventListener("DOMContentLoaded", init);
