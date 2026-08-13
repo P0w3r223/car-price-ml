@@ -119,14 +119,12 @@
   <div class="chart-wrap">{{ charts.depreciation }}</div>
   <figcaption>
     Median advert price per year of age across the cleaned data, up to
-    {{ oldest_bucket }} years. Every point is a one-year bucket; every fifth carries its
-    exact median and the number of adverts behind it, because those two medians are not
-    equally solid — {{ thousands(thinnest_bucket) }} adverts stand behind the oldest bucket
-    shown and thousands behind the youngest. Buckets under
-    n = {{ depreciation.min_bucket_n }} are dropped rather than drawn, and the export refuses
-    to publish if dropping one would leave the line bridging an age nobody measured. This is
-    the data, not the model — it is the non-linearity a linear baseline cannot follow, which
-    is why the linear model's error is roughly twice the tree ensembles'.
+    {{ oldest_bucket }} years; every point is a one-year bucket, and every fifth carries its
+    exact median. Buckets under n = {{ depreciation.min_bucket_n }} are dropped rather than
+    drawn, and the export refuses to publish if dropping one would leave the line bridging an
+    age nobody measured. This is the data, not the model — it is the non-linearity a linear
+    baseline cannot follow, which is why the linear model's error is roughly twice the tree
+    ensembles'.
   </figcaption>
 </figure>
 
