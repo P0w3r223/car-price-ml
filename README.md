@@ -93,9 +93,9 @@ A dependency-free **vanilla-JavaScript** valuation form (`docs/app/`) that `fetc
 `/predict` endpoint and renders the price with client-side validation and error handling.
 `fuel` and `province` are **closed vocabularies**: the service normalises spelling and
 casing but answers anything outside the domain with a `422`, rather than pricing the car
-from an all-zero category block. The form holds no copy of them — every vocabulary and bound
-it validates against is generated from `config.py` into `docs/app/config.json`, and without
-that file the form refuses to run rather than falling back to constants of its own.
+from an all-zero category block. The form validates against no copy of them — every
+vocabulary and bound it checks is generated from `config.py` into `docs/app/config.json`, and
+without that file the form refuses to run rather than falling back to constants of its own.
 When the API is running it is served at the site root — same origin as `/predict`, so no
 CORS — giving **real model predictions** in the browser:
 

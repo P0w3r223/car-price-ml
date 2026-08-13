@@ -38,6 +38,10 @@ def _code_only(source: str) -> str:
 
 APP_JS_CODE = _code_only(APP_JS)
 
+# The offline heuristic's per-fuel factors: matched once, because two tests need it — one to
+# read it, and one to keep its numbers out of the way while scanning for restated bounds.
+FUEL_FACTORS = re.compile(r"const fuelFactor = \{(.*?)\};", re.DOTALL)
+
 
 def test_root_serves_the_form():
     response = client.get("/")
@@ -98,9 +102,14 @@ def test_the_form_keeps_no_copy_of_the_vocabulary():
 
 
 def test_the_form_keeps_no_copy_of_the_numeric_bounds():
-    """Compared as numbers, not substrings: 40 is a substring of the heuristic's 400000."""
-    literals = {int(match.replace("_", ""))
-                for match in re.findall(r"\b\d[\d_]*\b", APP_JS_CODE)}
+    """Compared as numbers, not substrings: 40 is a substring of the heuristic's 400000.
+
+    The heuristic's factor table is cut out first, and not for convenience: the test below
+    requires that table to grow with ``KNOWN_FUELS``, so a future factor of 1.40 or 0.60
+    would fail *this* test with a message pointing at the wrong part of the file.
+    """
+    scanned = FUEL_FACTORS.sub("", APP_JS_CODE)
+    literals = {int(match.replace("_", "")) for match in re.findall(r"\b\d[\d_]*\b", scanned)}
     bounds = {
         config.REFERENCE_YEAR,
         config.REFERENCE_YEAR - config.AGE_MAX,
@@ -127,16 +136,20 @@ def test_the_form_reads_the_schema_the_generator_writes():
 
 
 def test_the_offline_heuristic_knows_every_fuel_the_form_offers():
-    """Its factor table is the one fuel-name copy left, and its miss would be silent.
+    """Its factor table is the one fuel-name copy left in JavaScript.
 
-    ``fuelFactor[car.fuel] ?? 1.0`` prices an unlisted fuel as petrol. The number is labelled
-    an estimate wherever it appears, so the blast radius is small — but a domain value
-    falling through to a default is the shape of bug this project keeps finding, and here it
-    costs one test to make the fallback unreachable instead of load-bearing.
+    The form refuses at runtime for a fuel the table lacks, rather than pricing it as petrol,
+    so a config offering a seventh fuel cannot be answered with a silent default. This test
+    keeps that refusal from being reachable with the *committed* config — a fuel added to
+    ``KNOWN_FUELS`` has to reach the table before it reaches the dropdown.
     """
-    table = re.search(r"const fuelFactor = \{(.*?)\};", APP_JS_CODE, re.DOTALL)
+    table = FUEL_FACTORS.search(APP_JS_CODE)
     assert table, "app.js no longer declares the heuristic's fuel factors"
-    priced = set(re.findall(r"(\w+):", table.group(1)))
+    # Quoted keys accepted too, so a fuel that is not a bare identifier ("Plug-in Hybrid")
+    # fails this test by being absent rather than by being unreadable.
+    # Over the whole declaration, braces included: the first key is preceded by `{`, not by a
+    # comma, and matching only the inside would silently drop it.
+    priced = set(re.findall(r'[{,]\s*"?([\w\- ]+?)"?\s*:', table.group(0)))
 
     assert priced == set(config.KNOWN_FUELS)
 
