@@ -26,10 +26,13 @@ from markupsafe import Markup
 
 from car_price_ml import config, data, features
 from car_price_ml import model as model_module
-from car_price_ml.site import AGGREGATE_SCHEMA, charts
+from car_price_ml.site import AGGREGATE_SCHEMA, charts, form, stylesheet
 
 TEMPLATE_DIR = Path(__file__).parent / "templates"
-ASSET_DIR = Path(__file__).parent / "assets"
+
+# The page's stylesheet, assembled rather than stored: the first two parts are also the
+# valuation form's, so the palette and the page frame are defined once for both.
+REPORT_STYLESHEET_PARTS = ("tokens.css", "base.css", "report.css")
 
 # How many hyper-parameter configurations the size↔quality sweep scored (ADR 0001). Named
 # here rather than written into the sentence that quotes it: it is the last number on this
@@ -295,9 +298,7 @@ def render(data_dir: Path | None = None) -> str:
         lstrip_blocks=True,
     )
     template = environment.get_template("index.html.j2")
-    return template.render(
-        styles=Markup((ASSET_DIR / "styles.css").read_text(encoding="utf-8")), **page
-    )
+    return template.render(styles=Markup(stylesheet(*REPORT_STYLESHEET_PARTS)), **page)
 
 
 def build(out_dir: Path | None = None, data_dir: Path | None = None) -> Path:
@@ -314,3 +315,9 @@ def build(out_dir: Path | None = None, data_dir: Path | None = None) -> Path:
 
 if __name__ == "__main__":
     print("wrote", build())
+    # The form's generated inputs go out with the page, so one command publishes everything
+    # CI then regenerates and diffs. Split into its own module because they are functions of
+    # `config.py` alone — no aggregates, no artifact — but publishing them separately would
+    # mean a page and a form built from two different commits of the same constants.
+    for path in form.write():
+        print("wrote", path)

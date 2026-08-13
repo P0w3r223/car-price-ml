@@ -4,3 +4,7 @@
 # every local rebuild then reports a stale page for a reason no commit caused.
 docs/index.html text eol=lf
 docs/data/*.json text eol=lf
+# Generated the same way, by the same command, and diffed by the same guard: the valuation
+# form's stylesheet and the bounds it validates against.
+docs/app/styles.css text eol=lf
+docs/app/config.json text eol=lf

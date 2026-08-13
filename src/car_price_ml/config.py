@@ -38,6 +38,11 @@ FIGURES_DIR = _dir_from_env("CAR_PRICE_FIGURES_DIR", PROJECT_ROOT / "reports" / 
 # not. Only `site.export` writes SITE_DATA_DIR; only `site.build` reads it.
 DOCS_DIR = _dir_from_env("CAR_PRICE_DOCS_DIR", PROJECT_ROOT / "docs")
 SITE_DATA_DIR = DOCS_DIR / "data"
+# The static valuation form. Two of the files in it are generated from this module by
+# `site.form`, for the same reason the report page is generated: a value restated by hand in
+# a second language drifts, and the one that drifted here priced ~7 % of the market with no
+# location at all.
+SITE_APP_DIR = DOCS_DIR / "app"
 
 # --- Dataset -----------------------------------------------------------------
 KAGGLE_DATASET = "aleksandrglotov/car-prices-poland"  # CC0-1.0; attribute in README
@@ -66,6 +71,18 @@ HIGH_CARD_CATEGORICAL = ("mark", "model")            # out-of-fold target encodi
 # Clean fuel domain (from the dataset) — used to validate API input so nonsense fuels
 # are rejected rather than silently priced.
 KNOWN_FUELS = ("CNG", "Diesel", "Electric", "Gasoline", "Hybrid", "LPG")
+
+# The one fuel for which `vol_engine == 0` is a fact rather than a missing value. Named
+# because three places compare against it — the cleaning rule, the API's displacement check
+# and the web form — and a literal repeated in three languages is how the province bug
+# happened. See `data.has_plausible_displacement`.
+ELECTRIC_FUEL = "Electric"
+
+# Upper bounds on the free-text fields at the API boundary. They are not domain knowledge —
+# the vocabulary decides what is valid — but a request has to be bounded before it is parsed,
+# and the form shows the same limit rather than letting the user type past it.
+MARK_MAX_LENGTH = 40
+MODEL_MAX_LENGTH = 60
 
 # The 16 Polish provinces, in correct Polish orthography (only the first element of a
 # compound name is capitalised: "Kujawsko-pomorskie") — which is also how they are spelled

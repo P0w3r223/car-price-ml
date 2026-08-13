@@ -27,7 +27,9 @@ src/car_price_ml/
     export.py   # measures what the page publishes -> docs/data/*.json (needs artifact + data)
     charts.py   # inline SVG; refuses to draw a MAE without its fold spread
     build.py    # renders docs/index.html from those committed aggregates alone
-api/            # FastAPI /predict + /vocabulary service
+    form.py     # writes docs/app/{config.json,styles.css} from config.py alone
+    assets/     # tokens.css (shared palette) + base.css, then report.css / form.css
+api/            # FastAPI /predict + /vocabulary service, serving docs/app at its root
 tests/          # pytest
 docs/data/      # the committed aggregates the page is rendered from
 docs/adr/       # design decisions with their measurements
@@ -39,6 +41,13 @@ The site is split in two because only the second half can run in CI: exporting n
 only `docs/data/*.json` and the project's own source. CI rebuilds the page and fails on any
 diff, so a hand-edited page — or one rendered from aggregates that were never committed —
 cannot reach Pages.
+
+The valuation form under `docs/app/` is static JavaScript, so everything it validates against
+is generated into `docs/app/config.json` rather than spelled there: `app.js` restates no
+vocabulary and no bound, and refuses to run at all if that file is missing, stale-schema or
+incomplete. It is emitted beside the form (not into `docs/data/`) because the API mounts
+`docs/app` at its root, so a sibling path resolves in both deployments. Both generated files
+are under the same CI diff guard as the page.
 
 ## Methodology rules
 
@@ -106,12 +115,14 @@ kaggle datasets download -d aleksandrglotov/car-prices-poland -p data/raw --unzi
 pytest
 python -m car_price_ml.train        # bake-off, then train and save the winner
 python -m car_price_ml.site.export  # measure what the page publishes -> docs/data/*.json
-python -m car_price_ml.site.build   # render docs/index.html from those aggregates
+python -m car_price_ml.site.build   # render docs/index.html + the form's generated inputs
 python -m car_price_ml.figures      # redraw the notebook's figures from the current data/model
 ```
 
 Publishing is `export` then `build`, in that order, and both are committed together: the
-aggregates are the page's inputs, and CI checks the page still matches them.
+aggregates are the page's inputs, and CI checks the page still matches them. `build` also
+writes `docs/app/config.json` and `docs/app/styles.css`, so the form and the page can never
+be published from two different commits of the same constants.
 
 ## Code intelligence
 

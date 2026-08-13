@@ -4,21 +4,31 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>car-price-ml — valuation form</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- Generated from src/car_price_ml/site/assets/{tokens,base,form}.css by
+     `python -m car_price_ml.site.build`. The first two parts are the report page's as well,
+     so both halves of this site share one palette and one dark mode. -->
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<main class="wrap">
-  <h1>Used-car valuation</h1>
-  <p class="sub">
-    A vanilla-JavaScript form that calls the <code>car-price-ml</code> prediction API.
-    <a href="../index.html">&larr; back to the analysis report</a>
+<main>
+  <p class="eyebrow">car-price-ml</p>
+  <h1>Value a used car</h1>
+  <p class="lead">
+    The same closed vocabularies the model was trained on, checked here before the request is
+    sent and again by the service. A make, a fuel or a province outside them is refused rather
+    than priced.
   </p>
 
+  <!-- Replaced on load with what is actually answering this form. Until then the submit
+       button stays disabled: the bounds are fetched, and a form that validated against
+       nothing would accept input the model cannot price. -->
+  <div id="status" class="card status" aria-live="polite">
+    <span class="status-label">Checking…</span>
+    <p>Loading the vocabularies and bounds this form validates against.</p>
+  </div>
+
   <form id="valuation" novalidate>
-    <div class="grid">
+    <div class="fields">
       <label>Make
         <input id="mark" type="text" required placeholder="opel" autocomplete="off"
                list="mark-options">
@@ -45,14 +55,14 @@
         <input id="vol_engine" type="number" inputmode="numeric" required placeholder="1248">
       </label>
     </div>
-    <button type="submit" id="submit">Estimate price</button>
+    <button type="submit" id="submit" disabled>Estimate price</button>
   </form>
 
-  <section id="result" class="result" aria-live="polite" hidden></section>
+  <section id="result" aria-live="polite" hidden></section>
 
   <footer>
-    <a href="https://github.com/P0w3r223/car-price-ml">source on GitHub</a> &middot;
-    real predictions when served by the API (<code>uvicorn api.main:app</code>)
+    <a href="../index.html">← the analysis behind this form</a> ·
+    <a href="https://github.com/P0w3r223/car-price-ml">source on GitHub</a>
   </footer>
 </main>
 <script src="app.js"></script>
