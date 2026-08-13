@@ -22,13 +22,23 @@ src/car_price_ml/
   features.py   # preprocessing: target encoding (OOF), one-hot, declared domains
   model.py      # bake-off, k-fold CV, metrics, SHAP, artifact contract, persistence
   train.py      # entrypoint: vintage check → bake-off → train the winner → save
-  figures.py    # report figures, regenerated from the current data and model
-  report.py     # generates the mini site from the artifact
+  figures.py    # the notebook's matplotlib figures, redrawn from the current data/model
+  site/
+    export.py   # measures what the page publishes -> docs/data/*.json (needs artifact + data)
+    charts.py   # inline SVG; refuses to draw a MAE without its fold spread
+    build.py    # renders docs/index.html from those committed aggregates alone
 api/            # FastAPI /predict + /vocabulary service
 tests/          # pytest
+docs/data/      # the committed aggregates the page is rendered from
 docs/adr/       # design decisions with their measurements
 docs/research/  # data sources, methodology, temporal recalibration
 ```
+
+The site is split in two because only the second half can run in CI: exporting needs the
+14 MB artifact and the dataset, neither of which is in the repository, while building needs
+only `docs/data/*.json` and the project's own source. CI rebuilds the page and fails on any
+diff, so a hand-edited page — or one rendered from aggregates that were never committed —
+cannot reach Pages.
 
 ## Methodology rules
 
@@ -94,9 +104,14 @@ docs/research/  # data sources, methodology, temporal recalibration
 .venv/Scripts/python -m pip install -r requirements.txt
 kaggle datasets download -d aleksandrglotov/car-prices-poland -p data/raw --unzip
 pytest
-python -m car_price_ml.train      # bake-off, then train and save the winner
-python -m car_price_ml.figures    # redraw report figures from the current data/model
+python -m car_price_ml.train        # bake-off, then train and save the winner
+python -m car_price_ml.site.export  # measure what the page publishes -> docs/data/*.json
+python -m car_price_ml.site.build   # render docs/index.html from those aggregates
+python -m car_price_ml.figures      # redraw the notebook's figures from the current data/model
 ```
+
+Publishing is `export` then `build`, in that order, and both are committed together: the
+aggregates are the page's inputs, and CI checks the page still matches them.
 
 ## Code intelligence
 
