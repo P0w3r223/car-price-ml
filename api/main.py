@@ -133,7 +133,10 @@ app = FastAPI(
     # 0.2.0: `fuel` and `province` are now closed vocabularies — an unknown value is a 422
     # where it previously returned a 200 computed from an all-zero category block. That is a
     # behavioural break for any existing caller, so it carries a minor-version bump.
-    version="0.2.0",
+    # 0.3.0: the artifact carries per-band out-of-fold errors and the model is exported to run
+    # in the page. The response is unchanged; the bump is for the artifact contract, which a
+    # 0.2.0 bundle no longer satisfies.
+    version="0.3.0",
     lifespan=lifespan,
 )
 

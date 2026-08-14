@@ -88,8 +88,9 @@ Notebook: [`notebooks/01_eda_and_model.ipynb`](notebooks/01_eda_and_model.ipynb)
 
 **Note.** The page is rendered from `docs/data/*.json`, which are committed; producing those
 needs the trained model + dataset (both kept out of git/CI), so `python -m
-car_price_ml.site.export` runs locally. CI runs the test suite **and** rebuilds the page and
-the form's generated files, failing if any of them no longer matches its inputs.
+car_price_ml.site.export` runs locally. CI lints with `ruff`, runs the test suite **and**
+rebuilds the page and the form's generated files, failing if any of them no longer matches its
+inputs.
 
 ## Project structure
 
@@ -110,6 +111,7 @@ docs/research/          # data sources, methodology, temporal recalibration
 ```bash
 python -m venv .venv
 .venv/Scripts/python -m pip install -r requirements.txt      # Windows
+ruff check .
 pytest
 
 # download the dataset (needs a Kaggle account/token), then train the served model
@@ -126,8 +128,10 @@ python -m car_price_ml.site.build    # docs/index.html + the form's config and s
 
 ## Web frontend
 
-A dependency-free **vanilla-JavaScript** valuation form (`docs/app/`) that `fetch`es the
-`/predict` endpoint and renders the price with client-side validation and error handling.
+A dependency-free **vanilla-JavaScript** valuation form (`docs/app/`). It prices the car in
+the page, and sends the submitted valuation to the `/predict` endpoint instead whenever an API
+with a model loaded is running behind it — the two agree to within a grosz, and a fixture holds
+them to that. The live figure that answers as you type is always computed in the page.
 `fuel` and `province` are **closed vocabularies**: the service normalises spelling and
 casing but answers anything outside the domain with a `422`, rather than pricing the car
 from an all-zero category block. The form validates against no copy of them — every
