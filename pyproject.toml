@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "car-price-ml"
-version = "0.2.0"
+version = "0.3.0"
 description = "Used-car price prediction for the Polish market — EDA, model comparison, FastAPI"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -37,6 +37,7 @@ dev = [
     "pytest>=8.3,<9",
     "httpx>=0.27,<1",
     "jupyterlab>=4.2,<5",
+    "ruff>=0.6,<1",
 ]
 
 [tool.setuptools.packages.find]
@@ -47,6 +48,30 @@ where = ["src"]
 # build resolves them relative to its own module, which has to keep working when the package
 # is installed rather than run from the checkout.
 "car_price_ml.site" = ["templates/*.j2", "assets/*.css"]
+
+# Ruff is here because it found a class of defect reading did not: five `zip()` calls that
+# would truncate in silence, one of them dropping makes off the end of the served vocabulary.
+# `B905` (zip without `strict=`) is the rule that pays for the whole file.
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+# The notebook is an exploratory record of what was run, kept for the reasoning rather than
+# as maintained code; linting it would only invite edits that make its output a fiction.
+extend-exclude = ["notebooks"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B", "UP", "C4", "SIM", "RET", "ARG"]
+ignore = [
+    # The project's own line-length is enforced by E501; formatting is not otherwise policed,
+    # because the code is laid out for reading rather than for a formatter.
+    "SIM108",  # a ternary is not always clearer than the if/else it replaces
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Fixtures, parametrised cases and monkeypatch stand-ins take arguments they do not read.
+"tests/*" = ["ARG001", "ARG002", "ARG005"]
+# The lifespan handler's `app` is FastAPI's signature, not ours to drop.
+"api/main.py" = ["ARG001"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -95,16 +95,21 @@ def _plan(fitted) -> list[dict]:
 
     steps: list[dict] = []
     for field, categories, encodings in zip(
-        config.HIGH_CARD_CATEGORICAL, target_encoder.categories_, target_encoder.encodings_
+        config.HIGH_CARD_CATEGORICAL, target_encoder.categories_, target_encoder.encodings_,
+        strict=True,
     ):
         steps.append({
             "kind": "target_encode",
             "field": field,
             # An object, not two parallel lists: a lookup that cannot be misaligned.
+            # strict: a truncated pairing would drop makes off the end of the vocabulary,
+            # and the runtime refuses what the vocabulary lacks — so cars the model can price
+            # would come back refused, with nothing anywhere saying why.
             "map": {str(category): float(encoding)
-                    for category, encoding in zip(categories, encodings)},
+                    for category, encoding in zip(categories, encodings, strict=True)},
         })
-    for field, categories in zip(config.LOW_CARD_CATEGORICAL, one_hot.categories_):
+    for field, categories in zip(config.LOW_CARD_CATEGORICAL, one_hot.categories_,
+                                 strict=True):
         steps.append({"kind": "one_hot", "field": field,
                       "categories": [str(category) for category in categories]})
     for field in config.NUMERIC_FEATURES:
@@ -133,10 +138,13 @@ def _assert_plan_matches(plan: list[dict], fitted) -> None:
     expected = model_module.transformed_feature_names(fitted)
     produced = _plan_columns(plan)
     if produced != expected:
+        # Not strict: the two lists are known to differ here — that is what is being reported —
+        # so the pairing must stop at the shorter one rather than raise while raising.
+        pairs = zip(produced, expected, strict=False)
+        divergence = next((i for i, (a, b) in enumerate(pairs) if a != b), "end")
         raise BrowserExportError(
             f"the exported plan produces {len(produced)} columns and the fitted preprocessor "
-            f"{len(expected)}; first divergence at index "
-            f"{next((i for i, (a, b) in enumerate(zip(produced, expected)) if a != b), 'end')} "
+            f"{len(expected)}; first divergence at index {divergence} "
             f"— refusing to publish a model the runtime would feed in a different order"
         )
 
@@ -306,7 +314,8 @@ def _error_bands(metadata: dict) -> list[dict]:
     # Contiguous, not merely ordered: a gap between two bands is a price the lookup cannot
     # place, and both lookups answer an unplaceable price with the nearest band — which for
     # anything above the first gap means the most expensive one.
-    gaps = [(lower["to_pln"], upper["from_pln"]) for lower, upper in zip(bands, bands[1:])
+    neighbours = zip(bands, bands[1:], strict=False)  # a pairwise window: the last band has none
+    gaps = [(lower["to_pln"], upper["from_pln"]) for lower, upper in neighbours
             if lower["to_pln"] != upper["from_pln"]]
     if gaps:
         raise BrowserExportError(
@@ -345,7 +354,7 @@ def _reachable_values(payload: dict) -> dict[int, list[float] | tuple[float, flo
     return reachable
 
 
-def _assert_rounding_flips_no_branch(payload: dict, booster) -> float:
+def _assert_rounding_flips_no_branch(payload: dict, booster) -> tuple[int, float]:
     """No reachable feature value may fall between a threshold and its rounded copy.
 
     A rounded *leaf* costs a little accuracy, which sampling can bound. A rounded *threshold*
@@ -382,8 +391,10 @@ def _assert_rounding_flips_no_branch(payload: dict, booster) -> float:
                                               math.ceil(high))
                           if floor <= value <= ceiling]
         else:
-            start = bisect_left(values, low)
-            candidates = values[start:bisect_right(values, high) + 1][:2]
+            # Every discrete value inside the interval, not the first couple of them: the
+            # interval is tiny, so more than one is implausible — but "implausible" is the
+            # word that precedes the bugs this check exists to catch.
+            candidates = values[bisect_left(values, low):bisect_right(values, high)]
         for value in candidates:
             # The comparison the runtime makes, before and after rounding. Equal is all that
             # is asked: the branch must not move.
@@ -481,7 +492,8 @@ def _on_threshold_values(payload: dict) -> dict[str, float]:
     for field in config.NUMERIC_FEATURES:
         index = columns.index(field)
         thresholds = [threshold for feature, threshold
-                      in zip(trees["feature"], trees["threshold"]) if feature == index]
+                      in zip(trees["feature"], trees["threshold"], strict=True)
+                      if feature == index]
         if not thresholds:
             # Silently dropping the field would leave the fixture one boundary case lighter
             # while still reading as complete.

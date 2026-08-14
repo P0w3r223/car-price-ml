@@ -139,18 +139,18 @@ def _drivers(fitted, x: pd.DataFrame) -> list[dict]:
     sample = x.sample(min(SHAP_SAMPLE_SIZE, len(x)), random_state=config.RANDOM_STATE)
     shap_values, _, names = model_module.shap_explanation(fitted, sample)
     per_slot = np.abs(np.asarray(shap_values)).mean(axis=0)
-    # Zip would silently truncate to the shorter of the two, quietly shifting every
-    # contribution onto the wrong feature — some SHAP versions append the base value as an
-    # extra column, and this page would then attribute it to whatever sorted last.
+    # Checked here rather than left to the `strict=True` below, because the explanation is
+    # what matters: some SHAP versions append the base value as an extra column, and a
+    # truncated pairing would attribute it to whatever feature sorted last.
     if per_slot.shape[0] != len(names):
         raise ExportError(
             f"SHAP returned {per_slot.shape[0]} columns for {len(names)} feature names — "
             f"refusing to guess which value belongs to which feature"
         )
 
-    totals: dict[str, float] = {column: 0.0 for column in features.FEATURE_COLUMNS}
-    slots_per_column: dict[str, int] = {column: 0 for column in features.FEATURE_COLUMNS}
-    for name, value in zip(names, per_slot):
+    totals: dict[str, float] = dict.fromkeys(features.FEATURE_COLUMNS, 0.0)
+    slots_per_column: dict[str, int] = dict.fromkeys(features.FEATURE_COLUMNS, 0)
+    for name, value in zip(names, per_slot, strict=True):
         # One-hot slots are named "<column>_<category>"; the encoder is fit on the declared
         # domains, so the prefix match is against a closed set rather than a guess.
         owner = next(
@@ -231,7 +231,8 @@ def _refusals(fitted, vocabulary: dict[str, list[str]]) -> list[dict]:
         rule="refused — zero displacement is only meaningful for an EV",
         unguarded=f"{_pln(no_engine)} "
                   f"({(no_engine / control - 1):+.0%} against the same car with an engine)",
-        lesson="In this dataset zero displacement means 'missing', except on an EV where it is a fact.",
+        lesson="In this dataset zero displacement means 'missing', except on an EV where it "
+               "is a fact.",
     ))
 
     # Out-of-domain one-hot values. These no longer reach a prediction at all: the encoder is

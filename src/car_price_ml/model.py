@@ -209,8 +209,12 @@ def artifact_vocabulary(fitted_model: TransformedTargetRegressor) -> dict[str, l
     list to refuse instead of guess.
     """
     transformers = fitted_model.regressor_.named_steps["prep"].named_transformers_
-    learned = zip(config.HIGH_CARD_CATEGORICAL, transformers["target_enc"].categories_)
-    declared = zip(config.LOW_CARD_CATEGORICAL, transformers["onehot"].categories_)
+    # strict: a fitted encoder holding a different number of category arrays than the config
+    # declares means the artifact and the code disagree about the feature set, and a silently
+    # short vocabulary would come back as a 503 about the wrong thing.
+    learned = zip(config.HIGH_CARD_CATEGORICAL, transformers["target_enc"].categories_,
+                  strict=True)
+    declared = zip(config.LOW_CARD_CATEGORICAL, transformers["onehot"].categories_, strict=True)
     return {
         column: [str(v) for v in categories]
         for column, categories in [*learned, *declared]
