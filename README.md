@@ -127,8 +127,9 @@ python -m car_price_ml.site.build    # docs/index.html + the form's config and s
 ## Web frontend
 
 A dependency-free **vanilla-JavaScript** valuation form (`docs/app/`). It prices the car in
-the page, and hands the request to the `/predict` endpoint instead whenever an API is running
-behind it — the two agree to within a grosz, and a fixture holds them to that.
+the page, and sends the submitted valuation to the `/predict` endpoint instead whenever an API
+with a model loaded is running behind it — the two agree to within a grosz, and a fixture holds
+them to that. The live figure that answers as you type is always computed in the page.
 `fuel` and `province` are **closed vocabularies**: the service normalises spelling and
 casing but answers anything outside the domain with a `422`, rather than pricing the car
 from an all-zero category block. The form validates against no copy of them — every

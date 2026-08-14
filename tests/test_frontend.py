@@ -181,9 +181,21 @@ def test_the_browsers_spelling_rule_still_matches_the_pythons():
         )
 
 
+SCRIPTS_THE_PAGE_LOADS = re.findall(
+    r'<script src="([^"]+)"',
+    (config.SITE_APP_DIR / "index.html").read_text(encoding="utf-8"),
+)
+
+
+@pytest.mark.parametrize("script", SCRIPTS_THE_PAGE_LOADS)
+def test_every_script_the_page_loads_is_served(script):
+    """A `<script src>` pointing at a file nobody wrote 404s in the browser and nowhere else."""
+    assert client.get(f"/{script}").status_code == 200
+
+
 @pytest.mark.skipif(shutil.which("node") is None,
                     reason="needs node to parse the form's scripts — installed in CI")
-@pytest.mark.parametrize("script", sorted(path.name for path in config.SITE_APP_DIR.glob("*.js")))
+@pytest.mark.parametrize("script", SCRIPTS_THE_PAGE_LOADS)
 def test_every_script_the_page_loads_parses(script):
     """A syntax error in these files is invisible to everything else in this repository.
 
@@ -192,9 +204,13 @@ def test_every_script_the_page_loads_parses(script):
     would ship a page that renders the form and then does nothing at all, and every test would
     stay green. `node --check` parses without executing, which is all that is needed: `app.js`
     calls `document` at load and could not be imported.
+
+    The list comes from the markup rather than from a glob, so a script the page loads but
+    nobody wrote is caught by the test above instead of 404-ing on the live page.
     """
+    source = config.SITE_APP_DIR / script
     finished = subprocess.run(
-        ["node", "--check", str(config.SITE_APP_DIR / script)],
+        ["node", "--check", str(source)],
         capture_output=True, text=True, timeout=60, check=False,
     )
 
@@ -235,6 +251,16 @@ def test_the_what_if_controls_move_the_fields_rather_than_adding_new_ones():
     assert 'bound("year-slider"' in APP_JS_CODE
     assert 'bound("mileage-slider"' in APP_JS_CODE
     assert 'id="whatif"' in page
+    # And inside the form, because that is the whole mechanism: a slider writes its field and
+    # its own `input` event bubbles to the form's listener. Moved into the what-if panel — which
+    # the page's copy invites — the live valuation would stop, silently, with every test green.
+    form_markup = re.search(r'<form id="valuation"[\s\S]*?</form>', page)
+    assert form_markup, "the page no longer carries a <form id=\"valuation\">"
+    for field in ("year", "mileage"):
+        assert f'id="{field}-slider"' in form_markup.group(0), (
+            f"the {field} slider sits outside the form, so its input never reaches the "
+            f"listener that re-values the car"
+        )
 
 
 def test_the_form_ships_disabled():

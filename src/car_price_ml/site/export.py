@@ -139,9 +139,9 @@ def _drivers(fitted, x: pd.DataFrame) -> list[dict]:
     sample = x.sample(min(SHAP_SAMPLE_SIZE, len(x)), random_state=config.RANDOM_STATE)
     shap_values, _, names = model_module.shap_explanation(fitted, sample)
     per_slot = np.abs(np.asarray(shap_values)).mean(axis=0)
-    # Zip would silently truncate to the shorter of the two, quietly shifting every
-    # contribution onto the wrong feature — some SHAP versions append the base value as an
-    # extra column, and this page would then attribute it to whatever sorted last.
+    # Checked here rather than left to the `strict=True` below, because the explanation is
+    # what matters: some SHAP versions append the base value as an extra column, and a
+    # truncated pairing would attribute it to whatever feature sorted last.
     if per_slot.shape[0] != len(names):
         raise ExportError(
             f"SHAP returned {per_slot.shape[0]} columns for {len(names)} feature names — "

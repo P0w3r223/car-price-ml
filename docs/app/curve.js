@@ -16,8 +16,9 @@ const PADDING = { top: 16, right: 16, bottom: 34, left: 64 };
 
 /** Round numbers a reader recognises — the same 1/2/2.5/5 progression charts.py uses. */
 function niceStep(span, target) {
-  // A zero span would take log10(0) to -Infinity and print NaN up the axis. It cannot happen
-  // for real prices, which is exactly why it would be found by a reader rather than by us.
+  // A zero span would take log10(0) to -Infinity, make `magnitude` zero and leave the axis
+  // with no ticks at all. It cannot happen for real prices, which is exactly why it would be
+  // found by a reader rather than by us.
   if (!(span > 0)) return 1;
   const rough = span / Math.max(1, target);
   const magnitude = Math.pow(10, Math.floor(Math.log10(rough)));
