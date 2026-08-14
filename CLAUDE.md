@@ -133,6 +133,7 @@ pipeline's by more than a grosz.
 ```bash
 .venv/Scripts/python -m pip install -r requirements.txt
 kaggle datasets download -d aleksandrglotov/car-prices-poland -p data/raw --unzip
+ruff check .                        # configured in pyproject.toml; runs in CI before the tests
 pytest
 python -m car_price_ml.train        # bake-off, then train and save the winner
 python -m car_price_ml.site.export  # docs/data/*.json + the browser model and its fixture
