@@ -284,8 +284,9 @@ function coupleSlider(fieldId) {
     if (!slider.disabled) slider.value = String(value);
   };
   follow();
-  // Writing the field is enough: `input` bubbles to the form, whose listener schedules the
-  // re-valuation. Calling it here as well would reset the debounce twice per drag frame.
+  // Writing the field is enough: the slider's own `input` bubbles to the form, whose listener
+  // schedules the re-valuation — which is why the sliders must stay inside the form element.
+  // Calling it here as well would reset the debounce twice per drag frame.
   slider.addEventListener("input", () => { field.value = slider.value; });
   // Out-of-range values are left to validation rather than snapped: silently rewriting what
   // someone typed is how a form tells you it priced something other than what you asked.
