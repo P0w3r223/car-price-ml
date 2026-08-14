@@ -88,8 +88,9 @@ Notebook: [`notebooks/01_eda_and_model.ipynb`](notebooks/01_eda_and_model.ipynb)
 
 **Note.** The page is rendered from `docs/data/*.json`, which are committed; producing those
 needs the trained model + dataset (both kept out of git/CI), so `python -m
-car_price_ml.site.export` runs locally. CI runs the test suite **and** rebuilds the page and
-the form's generated files, failing if any of them no longer matches its inputs.
+car_price_ml.site.export` runs locally. CI lints with `ruff`, runs the test suite **and**
+rebuilds the page and the form's generated files, failing if any of them no longer matches its
+inputs.
 
 ## Project structure
 
@@ -110,6 +111,7 @@ docs/research/          # data sources, methodology, temporal recalibration
 ```bash
 python -m venv .venv
 .venv/Scripts/python -m pip install -r requirements.txt      # Windows
+ruff check .
 pytest
 
 # download the dataset (needs a Kaggle account/token), then train the served model

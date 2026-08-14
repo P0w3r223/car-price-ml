@@ -241,7 +241,7 @@ def test_the_error_bands_are_measured_and_ordered(payload):
     bands = payload["error_bands"]
     assert len(bands) >= 5
 
-    for lower, upper in zip(bands, bands[1:]):
+    for lower, upper in zip(bands, bands[1:], strict=False):
         # Equal, not merely ordered. They were merely ordered once: the edges were each band's
         # observed minimum and maximum, which left nine gaps of 0.05 to 8.84 PLN, and a price
         # in one matched no band and was handed the most expensive band's spread — 21 606 PLN
