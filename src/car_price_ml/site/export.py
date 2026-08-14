@@ -148,8 +148,8 @@ def _drivers(fitted, x: pd.DataFrame) -> list[dict]:
             f"refusing to guess which value belongs to which feature"
         )
 
-    totals: dict[str, float] = {column: 0.0 for column in features.FEATURE_COLUMNS}
-    slots_per_column: dict[str, int] = {column: 0 for column in features.FEATURE_COLUMNS}
+    totals: dict[str, float] = dict.fromkeys(features.FEATURE_COLUMNS, 0.0)
+    slots_per_column: dict[str, int] = dict.fromkeys(features.FEATURE_COLUMNS, 0)
     for name, value in zip(names, per_slot, strict=True):
         # One-hot slots are named "<column>_<category>"; the encoder is fit on the declared
         # domains, so the prefix match is against a closed set rather than a guess.
