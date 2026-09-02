@@ -278,6 +278,36 @@ def test_the_form_ships_disabled():
     assert "CONFIG = await loadConfig()" in APP_JS  # and nothing else assigns the bounds
 
 
+def test_every_backend_the_probe_reports_has_a_banner():
+    """The probe answers with three strings; the banner table knew two.
+
+    ``probeBackend`` returns ``"absent"`` when no API replied at all, and that value reached
+    ``renderStatus``, which looks its argument up in a table holding only ``api`` and
+    ``browser``. Reading ``.className`` off the resulting ``undefined`` threw inside
+    ``init()`` — before the line that enables the submit button. On Pages there is no API to
+    reply, so this was not an edge case: it was every visit, and the form sat on "Loading…"
+    for good.
+
+    Read off the source rather than driven in a browser, because the failure was silent
+    everywhere except the console — the page looked like one still loading.
+    """
+    probe = re.search(r"async function probeBackend\(\).*?\n\}", APP_JS_CODE, re.S)
+    assert probe, "probeBackend() is gone or renamed — this guard no longer reads anything"
+    reported = set(re.findall(r'"(\w+)"', " ".join(re.findall(r"return ([^;]+);",
+                                                              probe.group(0)))))
+    assert reported, "no returned backend found — the guard would pass vacuously"
+
+    table = re.search(r"const states = \{(.*?)\n  \};", APP_JS_CODE, re.S)
+    assert table, "the states table is gone or was reshaped"
+    known = set(re.findall(r"^ {4}(\w+):", table.group(1), re.M))
+    mapped = set(re.findall(r'backend === "(\w+)"\)\s*backend =', APP_JS_CODE))
+
+    assert reported <= known | mapped, (
+        f"probeBackend can report {sorted(reported - known - mapped)}, which renderStatus has "
+        f"no banner for and nothing maps onto one — the form throws before it opens"
+    )
+
+
 def test_the_form_offers_no_option_the_config_did_not_put_there():
     """The dropdowns are filled from config.json; markup listing them would be a third copy."""
     page = client.get("/").text
