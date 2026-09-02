@@ -599,6 +599,12 @@ async function init() {
     renderUnavailable(`the model could not be loaded (${modelFailure})`);
     return;
   }
+  // probeBackend() has a third answer the two banners do not: "absent", meaning no API
+  // replied at all. Reaching here with it means the model did load, so the page is on the
+  // browser path and says so. Left unmapped it read as an undefined banner and threw before
+  // the button was ever enabled — on Pages, where there is no API to answer, that was every
+  // visit.
+  if (backend === "absent") backend = "browser";
 
   fillVocabularyHints();
   renderStatus(backend);
