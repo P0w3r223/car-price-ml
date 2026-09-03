@@ -21,3 +21,11 @@ docs/app/*.js text eol=lf
 # statistics, where it would otherwise make this a JSON project.
 docs/app/model.json text eol=lf -diff linguist-generated
 tests/fixtures/*.json text eol=lf
+# The same distortion as the line above, from a file that is ours rather than generated:
+# `01_eda_and_model.ipynb` is 259 433 B against 207 665 B of Python, and GitHub therefore
+# reports the repository card as a Jupyter Notebook project — one notebook outweighing the
+# package, the API, the site builder and the tests together. `linguist-documentation` and not
+# `linguist-vendored`: the notebook is not third-party code, it is the exploratory pass that
+# produced the model the API serves, and it stays in the repository, in the diff, and in the
+# README. Only the language bar changes.
+notebooks/*.ipynb linguist-documentation
