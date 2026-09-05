@@ -31,7 +31,9 @@
   --text: #1c2430;
   --muted: #5b6472;
   --accent: #2563eb;
-  --accent-soft: #93c5fd;
+  /* 3.12:1 on --bg, which is the ground the charts are painted on; #93c5fd was 1.80:1,
+     under the 3:1 a non-text graphic needs. */
+  --accent-soft: #5b93e4;
   /* Darker than the obvious #059669, which measures 3.5:1 on --surface — below AA for text
      this size, and it is the label on the one state a reader has to be able to trust. */
   --positive: #047857;
@@ -51,7 +53,7 @@
     --text: #e6eaf2;
     --muted: #98a3b6;
     --accent: #6ea8fe;
-    --accent-soft: #2c4a7c;
+    --accent-soft: #4167a6;  /* 3.30:1 on the dark page; #2c4a7c was 2.11:1 */
     --positive: #34d399;
     --warn: #fbbf24;
     --danger: #f87171;
