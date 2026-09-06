@@ -53,7 +53,11 @@ button {
   padding: 0.65rem 1rem;
   font: inherit;
   font-weight: 600;
-  color: #ffffff;
+  /* `--bg`, not `#ffffff`: the literal was white in both schemes, and in dark it put 16px
+     600-weight text at 2.42:1 on `--accent` `#6ea8fe` — an AA failure at 4.5:1, on a
+     control. The token follows the scheme, so the same rule measures 5.17:1 light and
+     7.71:1 dark. `mini-traceroute`'s button already paints its text this way. */
+  color: var(--bg);
   background: var(--accent);
   border: none;
   border-radius: var(--radius);
