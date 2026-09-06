@@ -146,6 +146,20 @@ aggregates are the page's inputs, and CI checks the page still matches them. `bu
 writes `docs/app/config.json` and `docs/app/styles.css`, so the form and the page can never
 be published from two different commits of the same constants.
 
+## The published page
+
+`docs/index.html and docs/app/index.html` is one of twelve surfaces held to a single specification: ten house colour tokens
+with pinned per-theme values, a dark override, six card-metadata tags, a profile back-link, a
+result-shaped `h1`, and — since S4 — the rule that **every figure the surface prints is a figure
+a committed artifact prints**, never a rounding and never a re-derivation. The spec is
+`docs/audit/0007_divergence-and-the-page-spec.md` §5 in the private portfolio index, and
+`tools/pagespec` there sweeps all twelve from the submodule working trees on every push.
+
+That checker reads HTML and CSS, so it cannot see this repository's artifacts and cannot tell an
+exempt page from one nobody built tiles for. What it structurally cannot carry lives in
+`tests/test_site.py` — the other half of the carrier, and the reason `docs/adr/0004_what-carries-the-page-spec.md`
+chose one checker plus local assertions over eleven vendored copies.
+
 ## Code intelligence
 
 Two indexes exist over this repo, and which one is reachable depends on the session:
