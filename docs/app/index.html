@@ -4,6 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>car-price-ml — valuation form</title>
+<meta name="description" content="The used-car price model running in the browser: the same 1 200 trees the API serves, exported and held to the same prices by a fixture.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Value a used car">
+<meta property="og:description" content="A make, fuel or province outside the model's closed vocabularies is refused rather than priced — the form validates against the bounds it fetches, not against guesses.">
+<meta property="og:url" content="https://p0w3r223.github.io/car-price-ml/app/">
+<meta name="twitter:card" content="summary">
+<!-- An inline SVG favicon, so this page makes no request for it and there is no binary
+     artifact with no committed source. The glyph is the report page's, because the two
+     surfaces are one site. -->
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22><text y=%2213%22 font-size=%2213%22>&#128663;</text></svg>">
 <!-- Generated from src/car_price_ml/site/assets/{tokens,base,form}.css by
      `python -m car_price_ml.site.build`. The first two parts are the report page's as well,
      so both halves of this site share one palette and one dark mode. -->
@@ -80,7 +90,8 @@
 
   <footer>
     <a href="../index.html">← the analysis behind this form</a> ·
-    <a href="https://github.com/P0w3r223/car-price-ml">source on GitHub</a>
+    <a href="https://github.com/P0w3r223/car-price-ml">source on GitHub</a> ·
+    <a href="https://github.com/P0w3r223">the rest of the portfolio</a>
   </footer>
 </main>
 <!-- predict.js first: it defines the runtime app.js loads the exported model into. The same
