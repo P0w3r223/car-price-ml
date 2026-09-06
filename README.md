@@ -53,7 +53,7 @@ so that cell records what shipped rather than what the export can still measure.
    pooled out-of-fold predictions, each MAE reported with its fold-to-fold spread because a
    gap smaller than the spread is not a better model. The winner is selected by the
    measurement rather than hardcoded, and LightGBM's hyper-parameters come from a published
-   size↔quality curve: **8 612 ± 72 PLN MAE in a 14 MB artifact**, against RandomForest's
+   size↔quality curve: **8 612 ± 72 PLN MAE in a 13.9 MB artifact**, against RandomForest's
    8 798 ± 81 in 590 MB.
 4. **Interpretability** — SHAP (TreeExplainer), reported per input column and labelled as a
    **log-price contribution**: the explainer runs on the regressor inside the
