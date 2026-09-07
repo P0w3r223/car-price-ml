@@ -2,7 +2,7 @@
 
 Date: 2026-08-13
 Status: accepted
-Author: P0w3r223
+Author: Piotr Cząstkiewicz
 Related to: [ADR 0002](0002_site-quotes-the-code.md) (the same discipline, applied to the
 other half of the site), [ADR 0001](0001_scope-and-site-expansion.md) (W6)
 
