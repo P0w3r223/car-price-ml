@@ -2,7 +2,7 @@
 
 Date: 2026-08-13
 Status: accepted
-Author: P0w3r223
+Author: Piotr Cząstkiewicz
 Related to: [ADR 0001](0001_scope-and-site-expansion.md) (W6, partially implemented here),
 [ADR 0004](0004_the-model-runs-in-the-browser.md) (which put the model in the page)
 

@@ -2,7 +2,7 @@
 
 Date: 2026-07-17
 Status: accepted
-Author: P0w3r223
+Author: Piotr Cząstkiewicz
 Related to: project A3 (used-car price model)
 
 ---

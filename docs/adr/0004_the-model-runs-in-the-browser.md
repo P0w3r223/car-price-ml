@@ -2,7 +2,7 @@
 
 Date: 2026-08-13
 Status: accepted
-Author: P0w3r223
+Author: Piotr Cząstkiewicz
 Related to: [ADR 0001](0001_scope-and-site-expansion.md) (W5, which this implements),
 [ADR 0003](0003_form-generated-and-fail-closed.md) (the form this replaces the answer of)
 
