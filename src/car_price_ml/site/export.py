@@ -24,7 +24,7 @@ import pandas as pd
 
 from car_price_ml import config, data, features
 from car_price_ml import model as model_module
-from car_price_ml.site import AGGREGATE_SCHEMA, MIN_BUCKET_N
+from car_price_ml.site import AGGREGATE_SCHEMA, MIN_BUCKET_N, pln
 
 SHAP_SAMPLE_SIZE = 1_000
 
@@ -174,11 +174,6 @@ def _predict(fitted, **overrides) -> float:
     return float(fitted.predict(pd.DataFrame([{**_CONTROL, **overrides}]))[0])
 
 
-def _pln(value: float) -> str:
-    """Thousands separated by a space, as everywhere else on the page and in Polish usage."""
-    return f"{value:,.0f}".replace(",", " ") + " PLN"
-
-
 def _refusals(fitted, vocabulary: dict[str, list[str]]) -> list[dict]:
     """Run every input the model cannot price down both paths, and record what happens.
 
@@ -197,7 +192,7 @@ def _refusals(fitted, vocabulary: dict[str, list[str]]) -> list[dict]:
         case="A make the model was never trained on",
         input="mark=ferrari, model=f40",
         rule="refused — not in the artifact's vocabulary",
-        unguarded=f"{_pln(ferrari)} — and zzzz/qqqq returns {_pln(nonsense)}",
+        unguarded=f"{pln(ferrari)} — and zzzz/qqqq returns {pln(nonsense)}",
         lesson="Both encode to the global target mean, so every unknown car is the same car.",
     ))
 
@@ -216,8 +211,8 @@ def _refusals(fitted, vocabulary: dict[str, list[str]]) -> list[dict]:
     probes.append(Probe(
         case="A known make, capitalised",
         input="mark=Opel (the dataset spells it opel)",
-        rule=f"normalised to '{normalised}' and priced: {_pln(control)}",
-        unguarded=f"{_pln(capitalised)} "
+        rule=f"normalised to '{normalised}' and priced: {pln(control)}",
+        unguarded=f"{pln(capitalised)} "
                   f"({(capitalised / control - 1):+.0%} against the same car)",
         lesson="A spelling variant is normalised; a different word is refused. Not the same thing.",
     ))
@@ -229,7 +224,7 @@ def _refusals(fitted, vocabulary: dict[str, list[str]]) -> list[dict]:
         case="A diesel with no engine",
         input="fuel=Diesel, vol_engine=0",
         rule="refused — zero displacement is only meaningful for an EV",
-        unguarded=f"{_pln(no_engine)} "
+        unguarded=f"{pln(no_engine)} "
                   f"({(no_engine / control - 1):+.0%} against the same car with an engine)",
         lesson="In this dataset zero displacement means 'missing', except on an EV where it "
                "is a fact.",

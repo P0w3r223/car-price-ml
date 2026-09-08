@@ -80,7 +80,7 @@
 <p class="note">
   Control car for every row: a {{ metrics.reference_year - refusals.control.age }} Opel Combo,
   {{ refusals.control.vol_engine }} cm³ diesel, {{ thousands(refusals.control.mileage) }} km,
-  {{ refusals.control.province }} — a real advert listed at 35 900 PLN. The API answers each
+  {{ refusals.control.province }} — a real advert listed at 35 900 PLN. The API answers each
   refusal with a <code>422</code> and names the field; <code>tests/test_api.py</code> holds
   that to it.
 </p>
@@ -95,6 +95,16 @@
   </figcaption>
 </figure>
 <p>{{ accuracy_verdict }}</p>
+<p class="note">
+  <strong>Where these errors come from, and why the sibling's differ.</strong> Every MAE here is
+  pooled out-of-fold over {{ metrics.cv_folds }}-fold cross-validation, on the
+  {{ thousands(metrics.n_train) }} adverts that survive de-duplication.
+  <a href="https://github.com/P0w3r223/mlops-car-price">mlops-car-price</a> reports the same
+  two model families the other way round, and it is not a contradiction: it scores a frozen
+  holdout split, from models trained on its own partition of a corpus cleaned before that
+  de-duplication step. Different question, different answer — and the cause of the flip is a
+  question neither repository has answered.
+</p>
 
 <h2>What moves a valuation</h2>
 <figure>
@@ -111,7 +121,7 @@
   The unit is a <strong>log-price contribution, not złoty</strong>. The explainer runs on the
   regressor inside the <code>TransformedTargetRegressor</code>, which is fit on
   <code>log1p(price)</code>: these values sum to <code>log1p(prediction)</code> and become
-  multiplicative under <code>expm1</code>. A waterfall reading "+8 400 PLN for age" would be
+  multiplicative under <code>expm1</code>. A waterfall reading "+8 400 PLN for age" would be
   the exact error this project exists to avoid, on its most-viewed page — so there is no
   waterfall.
 </p>
@@ -157,7 +167,7 @@
     Polish used-car prices fell roughly 10–24 % after it while general inflation ran +41 %, so
     "adjusting for inflation" would move the numbers the wrong way. The dataset carries no
     power, gearbox or condition, which is a ceiling on accuracy no model choice moves. And
-    9.8 % of the raw rows sit in exact-duplicate groups, and de-duplication removes 6 470 of
+    9.8 % of the raw rows sit in exact-duplicate groups, and de-duplication removes 6 470 of
     them: with shuffled folds the same advert was landing in train and test, so metrics
     published before it were optimistic.
   </p>

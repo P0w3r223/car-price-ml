@@ -26,7 +26,7 @@ from markupsafe import Markup
 
 from car_price_ml import config, data, features
 from car_price_ml import model as model_module
-from car_price_ml.site import AGGREGATE_SCHEMA, charts, form, stylesheet
+from car_price_ml.site import AGGREGATE_SCHEMA, charts, form, stylesheet, thousands
 
 TEMPLATE_DIR = Path(__file__).parent / "templates"
 
@@ -72,10 +72,6 @@ def _megabytes(size: int | None) -> str:
     return f"{size / 1e6:,.0f} MB" if size >= 100e6 else f"{size / 1e6:.1f} MB"
 
 
-def _thousands(value: float) -> str:
-    return f"{value:,.0f}".replace(",", " ")
-
-
 def _load(name: str, data_dir: Path) -> dict:
     path = data_dir / name
     if not path.is_file():
@@ -119,14 +115,14 @@ def _headline(metrics: dict) -> dict:
             return {
                 "claim": f"A {_megabytes(served_size)} model prices this market better "
                          f"than a {_megabytes(size)} one",
-                "detail": f"{served} reaches {_thousands(served_mae)} PLN mean absolute "
-                          f"error against {name}'s {_thousands(rival_mae)}, in an artifact "
+                "detail": f"{served} reaches {thousands(served_mae)} PLN mean absolute "
+                          f"error against {name}'s {thousands(rival_mae)}, in an artifact "
                           f"{size / served_size:.0f}× smaller — so the size↔quality "
                           f"trade-off this project was built around turned out not to exist.",
             }
     return {
         "claim": f"{served} is the model this comparison chose",
-        "detail": f"{_thousands(served_mae)} PLN mean absolute error over "
+        "detail": f"{thousands(served_mae)} PLN mean absolute error over "
                   f"{metrics['cv_folds']}-fold cross-validation, in an artifact of "
                   f"{_megabytes(served_size)}.",
     }
@@ -159,7 +155,7 @@ def _accuracy_verdict(metrics: dict) -> str:
         # says it plainly rather than dressing it up as a result.
         return (
             f"{served} is served although it did not win the comparison — the winner was "
-            f"{ranked[0][0]} at {_thousands(ranked[0][1]['mae'])} PLN."
+            f"{ranked[0][0]} at {thousands(ranked[0][1]['mae'])} PLN."
         )
 
     (_, best), (rival, runner_up) = ranked[0], ranked[1]
@@ -167,13 +163,13 @@ def _accuracy_verdict(metrics: dict) -> str:
     combined = math.hypot(best["mae_fold_std"], runner_up["mae_fold_std"])
     if gap <= combined:
         return (
-            f"Read the whiskers before the ranking: the {_thousands(gap)} PLN lead over "
-            f"{rival} is inside the folds' combined spread ({_thousands(combined)} PLN), so "
+            f"Read the whiskers before the ranking: the {thousands(gap)} PLN lead over "
+            f"{rival} is inside the folds' combined spread ({thousands(combined)} PLN), so "
             f"on accuracy alone this is a tie and the decision rests on the size column."
         )
     return (
-        f"The {_thousands(gap)} PLN lead over {rival} clears the folds' combined spread "
-        f"({_thousands(combined)} PLN), so the ranking is not fold noise. It is still the "
+        f"The {thousands(gap)} PLN lead over {rival} clears the folds' combined spread "
+        f"({thousands(combined)} PLN), so the ranking is not fold noise. It is still the "
         f"best of {SEARCHED_CONFIGURATIONS} configurations scored on the same "
         f"cross-validation, which makes the winner's own score a little optimistic — so the "
         f"decision to serve it rests on the size difference, which selection noise cannot "
@@ -197,10 +193,10 @@ def _kpis(metrics: dict) -> list[Kpi]:
         size_kpi = Kpi("Served artifact", _megabytes(served_size), f"{served}, joblib")
 
     return [
-        Kpi("Adverts trained on", _thousands(metrics["n_train"]),
+        Kpi("Adverts trained on", thousands(metrics["n_train"]),
             "after de-duplication and the documented cleaning rules"),
-        Kpi("Mean absolute error", f"{_thousands(scores['mae'])} PLN",
-            f"± {_thousands(scores['mae_fold_std'])} between folds, out-of-fold, in PLN"),
+        Kpi("Mean absolute error", f"{thousands(scores['mae'])} PLN",
+            f"± {thousands(scores['mae_fold_std'])} between folds, out-of-fold, in PLN"),
         size_kpi,
         Kpi("Closed input domains", str(len(sizes)),
             " · ".join(f"{field} ({count})" for field, count in sizes.items())
@@ -283,7 +279,7 @@ def gather(data_dir: Path | None = None) -> dict:
         "fuels": list(config.KNOWN_FUELS),
         "rules": [(name, inspect.getsource(target)) for name, target in PUBLISHED_RULES],
         "megabytes": _megabytes,
-        "thousands": _thousands,
+        "thousands": thousands,
     }
 
 
