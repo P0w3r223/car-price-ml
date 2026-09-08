@@ -18,6 +18,8 @@ import math
 from dataclasses import dataclass
 from html import escape
 
+from car_price_ml.site import thousands
+
 _WIDTH = 720
 _ROW_HEIGHT = 30
 _LABEL_WIDTH = 130
@@ -70,10 +72,6 @@ class Point:
 
 def _text(value) -> str:
     return escape(str(value), quote=True)
-
-
-def _thousands(value: float) -> str:
-    return f"{value:,.0f}".replace(",", " ")
 
 
 def _svg(width: int, height: int, title: str, body: str) -> str:
@@ -131,7 +129,7 @@ def bakeoff_chart(bars: list[SpreadBar], title: str = "Cross-validated error by 
             f'<line class="spread-cap" x1="{x_of(bar.value + bar.spread):.1f}" '
             f'x2="{x_of(bar.value + bar.spread):.1f}" y1="{mid - 5}" y2="{mid + 5}"></line>'
             f'<text class="bar-value" x="{x_of(bar.value + bar.spread) + 8:.1f}" '
-            f'y="{mid + 4}">{_thousands(bar.value)} ± {_thousands(bar.spread)}'
+            f'y="{mid + 4}">{thousands(bar.value)} ± {thousands(bar.spread)}'
             f" · {_text(bar.note)}</text>"
         )
     return _svg(_WIDTH, height, f"{title} (PLN)", "".join(parts))
@@ -239,7 +237,7 @@ def curve_chart(
             f'<line class="grid" x1="{_CURVE_LEFT}" x2="{_CURVE_LEFT + plot_width}" '
             f'y1="{y:.1f}" y2="{y:.1f}"></line>'
             f'<text class="axis" x="{_CURVE_LEFT - 8}" y="{y + 4:.1f}" '
-            f'text-anchor="end">{_thousands(level)}</text>'
+            f'text-anchor="end">{thousands(level)}</text>'
         )
         level += y_step
 
@@ -274,9 +272,9 @@ def curve_chart(
         anchor = "start" if point.x == 0 else ("end" if point.x == x_max else "middle")
         parts.append(
             f'<text class="bar-value" x="{x:.1f}" y="{y - 12:.1f}" text-anchor="{anchor}">'
-            f"{_thousands(point.y)} PLN</text>"
+            f"{thousands(point.y)} PLN</text>"
             f'<text class="axis" x="{x:.1f}" y="{_CURVE_BASELINE + 18:.1f}" '
-            f'text-anchor="middle">{_thousands(point.x)}</text>'
+            f'text-anchor="middle">{thousands(point.x)}</text>'
         )
 
     parts.append(

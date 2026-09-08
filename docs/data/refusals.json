@@ -14,21 +14,21 @@
       "case": "A make the model was never trained on",
       "input": "mark=ferrari, model=f40",
       "rule": "refused — not in the artifact's vocabulary",
-      "unguarded": "34 093 PLN — and zzzz/qqqq returns 34 093 PLN",
+      "unguarded": "34 093 PLN — and zzzz/qqqq returns 34 093 PLN",
       "lesson": "Both encode to the global target mean, so every unknown car is the same car."
     },
     {
       "case": "A known make, capitalised",
       "input": "mark=Opel (the dataset spells it opel)",
-      "rule": "normalised to 'opel' and priced: 33 576 PLN",
-      "unguarded": "38 399 PLN (+14% against the same car)",
+      "rule": "normalised to 'opel' and priced: 33 576 PLN",
+      "unguarded": "38 399 PLN (+14% against the same car)",
       "lesson": "A spelling variant is normalised; a different word is refused. Not the same thing."
     },
     {
       "case": "A diesel with no engine",
       "input": "fuel=Diesel, vol_engine=0",
       "rule": "refused — zero displacement is only meaningful for an EV",
-      "unguarded": "37 248 PLN (+11% against the same car with an engine)",
+      "unguarded": "37 248 PLN (+11% against the same car with an engine)",
       "lesson": "In this dataset zero displacement means 'missing', except on an EV where it is a fact."
     },
     {

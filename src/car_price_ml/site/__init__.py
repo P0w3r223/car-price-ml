@@ -35,3 +35,23 @@ def stylesheet(*parts: str) -> str:
     """
     blocks = [(ASSET_DIR / part).read_text(encoding="utf-8").rstrip() for part in parts]
     return "\n".join(blocks) + "\n"
+
+
+def thousands(value: float) -> str:
+    """A whole figure, grouped with U+202F -- `0007` §5 clause 8 of the page specification.
+
+    Here, beside the other contracts both sides of the build share, because it existed three
+    times and one of the three had drifted. `charts` grouped with U+202F and `build` with a
+    plain space, from lines that were byte-identical apart from that one codepoint; `export`
+    had a third copy inside `_pln`, whose docstring asserted the convention the repository
+    was not keeping. A reader comparing the three in a terminal saw the same line.
+
+    Written as an escape rather than as the character, for the same reason: U+0020 and U+202F
+    are one string in a diff, a terminal and a `grep`.
+    """
+    return f"{value:,.0f}".replace(",", "\u202f")
+
+
+def pln(value: float) -> str:
+    """A price, grouped and with its unit -- one call so the two cannot disagree."""
+    return f"{thousands(value)} PLN"

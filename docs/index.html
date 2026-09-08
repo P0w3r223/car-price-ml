@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>A 13.9 MB model prices this market better than a 590 MB one — car-price-ml</title>
-<meta name="description" content="LightGBM reaches 8 612 PLN mean absolute error against RandomForest&#39;s 8 798, in an artifact 43× smaller — so the size↔quality trade-off this project was built around turned out not to exist.">
+<meta name="description" content="LightGBM reaches 8 612 PLN mean absolute error against RandomForest&#39;s 8 798, in an artifact 43× smaller — so the size↔quality trade-off this project was built around turned out not to exist.">
 <meta property="og:type" content="website">
 <meta property="og:title" content="A 13.9 MB model prices this market better than a 590 MB one">
-<meta property="og:description" content="LightGBM reaches 8 612 PLN mean absolute error against RandomForest&#39;s 8 798, in an artifact 43× smaller — so the size↔quality trade-off this project was built around turned out not to exist.">
+<meta property="og:description" content="LightGBM reaches 8 612 PLN mean absolute error against RandomForest&#39;s 8 798, in an artifact 43× smaller — so the size↔quality trade-off this project was built around turned out not to exist.">
 <meta property="og:url" content="https://p0w3r223.github.io/car-price-ml/">
 <meta name="twitter:card" content="summary">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22><text y=%2213%22 font-size=%2213%22>&#128663;</text></svg>">
@@ -240,17 +240,17 @@ pre {
 <header>
   <p class="eyebrow">Polish used-car prices · 2022 snapshot · served by LightGBM</p>
   <h1>A 13.9 MB model prices this market better than a 590 MB one</h1>
-  <p class="lead">LightGBM reaches 8 612 PLN mean absolute error against RandomForest&#39;s 8 798, in an artifact 43× smaller — so the size↔quality trade-off this project was built around turned out not to exist.</p>
+  <p class="lead">LightGBM reaches 8 612 PLN mean absolute error against RandomForest&#39;s 8 798, in an artifact 43× smaller — so the size↔quality trade-off this project was built around turned out not to exist.</p>
 </header>
 
 <ul class="kpis">
   <li class="kpi">
-    <div class="kpi-value">111 018</div>
+    <div class="kpi-value">111 018</div>
     <div class="kpi-label">Adverts trained on</div>
     <div class="kpi-note">after de-duplication and the documented cleaning rules</div>
   </li>
   <li class="kpi">
-    <div class="kpi-value">8 612 PLN</div>
+    <div class="kpi-value">8 612 PLN</div>
     <div class="kpi-label">Mean absolute error</div>
     <div class="kpi-note">± 72 between folds, out-of-fold, in PLN</div>
   </li>
@@ -303,17 +303,17 @@ pre {
     <tr>
       <td><strong>A make the model was never trained on</strong><br><code>mark=ferrari, model=f40</code></td>
       <td><span class="verdict">refused — not in the artifact&#39;s vocabulary</span></td>
-      <td><span class="was">34 093 PLN — and zzzz/qqqq returns 34 093 PLN</span><br>Both encode to the global target mean, so every unknown car is the same car.</td>
+      <td><span class="was">34 093 PLN — and zzzz/qqqq returns 34 093 PLN</span><br>Both encode to the global target mean, so every unknown car is the same car.</td>
     </tr>
     <tr>
       <td><strong>A known make, capitalised</strong><br><code>mark=Opel (the dataset spells it opel)</code></td>
-      <td><span class="verdict">normalised to &#39;opel&#39; and priced: 33 576 PLN</span></td>
-      <td><span class="was">38 399 PLN (+14% against the same car)</span><br>A spelling variant is normalised; a different word is refused. Not the same thing.</td>
+      <td><span class="verdict">normalised to &#39;opel&#39; and priced: 33 576 PLN</span></td>
+      <td><span class="was">38 399 PLN (+14% against the same car)</span><br>A spelling variant is normalised; a different word is refused. Not the same thing.</td>
     </tr>
     <tr>
       <td><strong>A diesel with no engine</strong><br><code>fuel=Diesel, vol_engine=0</code></td>
       <td><span class="verdict">refused — zero displacement is only meaningful for an EV</span></td>
-      <td><span class="was">37 248 PLN (+11% against the same car with an engine)</span><br>In this dataset zero displacement means &#39;missing&#39;, except on an EV where it is a fact.</td>
+      <td><span class="was">37 248 PLN (+11% against the same car with an engine)</span><br>In this dataset zero displacement means &#39;missing&#39;, except on an EV where it is a fact.</td>
     </tr>
     <tr>
       <td><strong>An unknown fuel</strong><br><code>fuel=Petrol (a different word for a known fuel)</code></td>
@@ -335,8 +335,8 @@ pre {
 </div>
 <p class="note">
   Control car for every row: a 2015 Opel Combo,
-  1248 cm³ diesel, 139 568 km,
-  Mazowieckie — a real advert listed at 35 900 PLN. The API answers each
+  1248 cm³ diesel, 139 568 km,
+  Mazowieckie — a real advert listed at 35 900 PLN. The API answers each
   refusal with a <code>422</code> and names the field; <code>tests/test_api.py</code> holds
   that to it.
 </p>
@@ -347,16 +347,26 @@ pre {
   <figcaption>
     Pooled out-of-fold MAE over 5-fold cross-validation, in PLN, with
     the fold-to-fold spread as a whisker and the artifact size beside it.
-    <strong>n = 111 018</strong> adverts.
+    <strong>n = 111 018</strong> adverts.
   </figcaption>
 </figure>
 <p>The 186 PLN lead over RandomForest clears the folds&#39; combined spread (108 PLN), so the ranking is not fold noise. It is still the best of 16 configurations scored on the same cross-validation, which makes the winner&#39;s own score a little optimistic — so the decision to serve it rests on the size difference, which selection noise cannot touch.</p>
+<p class="note">
+  <strong>Where these errors come from, and why the sibling's differ.</strong> Every MAE here is
+  pooled out-of-fold over 5-fold cross-validation, on the
+  111 018 adverts that survive de-duplication.
+  <a href="https://github.com/P0w3r223/mlops-car-price">mlops-car-price</a> reports the same
+  two model families the other way round, and it is not a contradiction: it scores a frozen
+  holdout split, from models trained on its own partition of a corpus cleaned before that
+  de-duplication step. Different question, different answer — and the cause of the flip is a
+  question neither repository has answered.
+</p>
 
 <h2>What moves a valuation</h2>
 <figure>
   <div class="chart-wrap"><svg class="chart" viewBox="0 0 720 234" width="720" height="234" role="img" aria-label="What moves a valuation (mean |SHAP|, log-price)" xmlns="http://www.w3.org/2000/svg"><title>What moves a valuation (mean |SHAP|, log-price)</title><text class="bar-label" x="122" y="28.0" text-anchor="end">age</text><rect class="bar" x="130" y="17" width="480.0" height="16" rx="2"></rect><text class="bar-value" x="618.0" y="28.0">0.592</text><text class="bar-label" x="122" y="58.0" text-anchor="end">model</text><rect class="bar" x="130" y="47" width="166.5" height="16" rx="2"></rect><text class="bar-value" x="304.5" y="58.0">0.205</text><text class="bar-label" x="122" y="88.0" text-anchor="end">vol_engine</text><rect class="bar" x="130" y="77" width="130.9" height="16" rx="2"></rect><text class="bar-value" x="268.9" y="88.0">0.161</text><text class="bar-label" x="122" y="118.0" text-anchor="end">mark</text><rect class="bar" x="130" y="107" width="85.7" height="16" rx="2"></rect><text class="bar-value" x="223.7" y="118.0">0.106</text><text class="bar-label" x="122" y="148.0" text-anchor="end">mileage</text><rect class="bar" x="130" y="137" width="80.5" height="16" rx="2"></rect><text class="bar-value" x="218.5" y="148.0">0.099</text><text class="bar-label" x="122" y="178.0" text-anchor="end">fuel</text><rect class="bar" x="130" y="167" width="24.5" height="16" rx="2"></rect><text class="bar-value" x="162.5" y="178.0">0.030</text><text class="bar-label" x="122" y="208.0" text-anchor="end">province</text><rect class="bar" x="130" y="197" width="22.3" height="16" rx="2"></rect><text class="bar-value" x="160.3" y="208.0">0.028</text></svg></div>
   <figcaption>
-    Mean |SHAP| per input column over 1 000 sampled adverts,
+    Mean |SHAP| per input column over 1 000 sampled adverts,
     aggregated back to the column the reader supplies — one-hot turns
     <code>province</code> into 16 slots, and charting those beside a
     single <code>age</code> bar would say location matters least when it has merely been
@@ -367,7 +377,7 @@ pre {
   The unit is a <strong>log-price contribution, not złoty</strong>. The explainer runs on the
   regressor inside the <code>TransformedTargetRegressor</code>, which is fit on
   <code>log1p(price)</code>: these values sum to <code>log1p(prediction)</code> and become
-  multiplicative under <code>expm1</code>. A waterfall reading "+8 400 PLN for age" would be
+  multiplicative under <code>expm1</code>. A waterfall reading "+8 400 PLN for age" would be
   the exact error this project exists to avoid, on its most-viewed page — so there is no
   waterfall.
 </p>
@@ -413,7 +423,7 @@ pre {
     Polish used-car prices fell roughly 10–24 % after it while general inflation ran +41 %, so
     "adjusting for inflation" would move the numbers the wrong way. The dataset carries no
     power, gearbox or condition, which is a ceiling on accuracy no model choice moves. And
-    9.8 % of the raw rows sit in exact-duplicate groups, and de-duplication removes 6 470 of
+    9.8 % of the raw rows sit in exact-duplicate groups, and de-duplication removes 6 470 of
     them: with shuffled folds the same advert was landing in train and test, so metrics
     published before it were optimistic.
   </p>
@@ -604,8 +614,8 @@ pre {
   <p>
     Built from the LightGBM artifact trained
     <time datetime="2026-08-13">2026-08-13</time> on
-    111 018 adverts, commit
-    <code>bd3ecd4</code> ·
+    111 018 adverts, commit
+    <code>bb8768d</code> ·
     <a href="data/metrics.json">the aggregates this page renders</a> ·
     <a href="https://github.com/P0w3r223/car-price-ml">source on GitHub</a> ·
     <a href="https://github.com/P0w3r223">the rest of the portfolio</a>
