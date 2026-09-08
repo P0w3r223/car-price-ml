@@ -19,6 +19,16 @@ from car_price_ml import model as model_module
 from car_price_ml.site import build, charts, export, form, stylesheet
 
 
+
+#: Every separator a figure on this page or its sibling can carry, deleted before two
+#: numbers are compared. `0007` §5.0 makes the separator the page's typography rather
+#: than part of the claim, so a comparison that keeps it is comparing spellings.
+_SEPARATORS = str.maketrans(dict.fromkeys(', \u202f\xa0\u2009', ""))
+
+#: A figure as a reader meets it: digits, with any of the separators above between
+#: groups, and an optional decimal part.
+_FIGURE = re.compile(r"\d[\d\, \u202f\u00a0\u2009]*\d|\d")
+
 @pytest.fixture(scope="module")
 def page() -> str:
     return build.render()
@@ -379,3 +389,44 @@ def test_both_pages_are_built_from_the_same_palette():
     assert tokens.strip() in report_styles
     assert tokens.strip() in form_styles
     assert "prefers-color-scheme: dark" in tokens
+
+
+def test_the_page_names_its_own_measurement_and_points_at_the_sibling(page):
+    """`0007` §6 clause 9's checkable half, this repository's side of it.
+
+    This page and `mlops-car-price` report the same two model families with the errors the
+    other way round, and both are right: this one scores pooled out-of-fold MAE over
+    cross-validation on a de-duplicated corpus, the other a frozen holdout split. What the
+    clause forbids is a reader meeting both with no bridge.
+
+    The twin of this test lives in `mlops-car-price` and this one is deliberately built the
+    same way, including its two hard-won details: read the **rendered** text rather than the
+    markup, so moving the bridge into an HTML comment does not satisfy it; and compare the
+    sibling's figures as **digits**, because listing spellings misses the U+202F that clause
+    8 mandates and that both pages now publish.
+    """
+    # Style, script and comments go first, and the order is the point: a bare tag strip
+    # leaves a commented-out block's text in place, because `<[^>]+>` cannot cross the
+    # `>` inside `<!-- <p class="note">`. Moving the bridge into a comment then satisfies
+    # this test while a reader sees nothing -- proved by mutation, having read the twin's
+    # docstring recording the same defect and reproduced it anyway.
+    prose = re.sub(r"<(style|script).*?</>", " ", page, flags=re.DOTALL | re.IGNORECASE)
+    prose = re.sub(r"<!--.*?-->", " ", prose, flags=re.DOTALL)
+    prose = re.sub(r"<[^>]+>", " ", prose)
+    assert re.search(r"cross-validation", prose, re.IGNORECASE), (
+        "the page reports an MAE without naming the measurement it comes from"
+    )
+    assert re.search(r"holdout", prose, re.IGNORECASE), (
+        "the bridge names this measurement but not the sibling's, so a reader still meets "
+        "two numbers and no reason they differ"
+    )
+    assert "github.com/P0w3r223/mlops-car-price" in page, (
+        "clause 9 asks this page to point at the other measurement, not only to name its own"
+    )
+    digits = {token.translate(_SEPARATORS)
+              for token in re.findall(_FIGURE, prose)}
+    foreign = {"9278", "8908", "15422", "23571", "117859", "338.5"} & digits
+    assert not foreign, (
+        f"the page prints {sorted(foreign)}, which are mlops-car-price's cells and not this "
+        "repository's -- clause 9 asks for a bridge, not for the other page's figures"
+    )
