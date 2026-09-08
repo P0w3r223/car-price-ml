@@ -25,6 +25,13 @@ from car_price_ml.site import build, charts, export, form, stylesheet
 #: than part of the claim, so a comparison that keeps it is comparing spellings.
 _SEPARATORS = str.maketrans(dict.fromkeys(', \u202f\xa0\u2009', ""))
 
+#: The metadata a reader meets before the page loads. `og:url`, `og:type` and `twitter:card`
+#: are deliberately absent: they are machine values, and reading them as claims makes the
+#: account handle's `223` a figure this page would have to source.
+_META_CONTENT = re.compile(
+    r'<meta\s+(?:name|property)="(?:description|og:title|og:description)"\s+content="([^"]*)"',
+    re.IGNORECASE)
+
 #: A figure as a reader meets it: digits, with any of the separators above between
 #: groups, and an optional decimal part.
 _FIGURE = re.compile(r"\d[\d\, \u202f\u00a0\u2009]*\d|\d")
@@ -191,7 +198,7 @@ def test_the_curve_carries_a_scale_on_both_axes():
     assert svg.count('class="grid"') >= 3
     ticks = re.findall(r'class="axis"[^>]*text-anchor="end">([^<]*)</text>', svg)
     assert "0" in ticks
-    assert any(tick.replace(" ", "").replace(" ", "").isdigit() and tick != "0"
+    assert any(tick.replace("\u202f", "").replace(" ", "").isdigit() and tick != "0"
                for tick in ticks)
 
 
@@ -407,12 +414,21 @@ def test_the_page_names_its_own_measurement_and_points_at_the_sibling(page):
     """
     # Style, script and comments go first, and the order is the point: a bare tag strip
     # leaves a commented-out block's text in place, because `<[^>]+>` cannot cross the
-    # `>` inside `<!-- <p class="note">`. Moving the bridge into a comment then satisfies
-    # this test while a reader sees nothing -- proved by mutation, having read the twin's
-    # docstring recording the same defect and reproduced it anyway.
-    prose = re.sub(r"<(style|script).*?</>", " ", page, flags=re.DOTALL | re.IGNORECASE)
+    # `>` inside `<!-- <p class="note">`. Moving the bridge into a comment, or into a
+    # `<style>` element, then satisfies this test while a reader sees nothing.
+    #
+    # *This line shipped with `\b` and `\1` written as the **bytes** U+0008 and U+0001,
+    # so it matched nothing and the `<style>` half was inert.* It renders identically in a
+    # diff, a terminal and a `grep` -- the invisible-codepoint failure this whole stage is
+    # about, inside the guard the stage added, and found by a review's mutation rather than
+    # by the three this commit's author ran. Both mutations are pinned below.
+    prose = re.sub(r"<(style|script)\b.*?</\1>", " ", page, flags=re.DOTALL | re.IGNORECASE)
     prose = re.sub(r"<!--.*?-->", " ", prose, flags=re.DOTALL)
-    prose = re.sub(r"<[^>]+>", " ", prose)
+    # The metadata a reader meets in a search result and a shared link, appended the way the
+    # twin does it: this page publishes six grouped figures inside `<meta>`, so a sibling's
+    # cell pasted into a description would otherwise pass this guard and reach every card.
+    meta = " ".join(_META_CONTENT.findall(prose))
+    prose = re.sub(r"<[^>]+>", " ", prose) + " " + meta
     assert re.search(r"cross-validation", prose, re.IGNORECASE), (
         "the page reports an MAE without naming the measurement it comes from"
     )

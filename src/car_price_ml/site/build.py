@@ -69,7 +69,11 @@ class Kpi:
 def _megabytes(size: int | None) -> str:
     if not size:
         return "—"
-    return f"{size / 1e6:,.0f} MB" if size >= 100e6 else f"{size / 1e6:.1f} MB"
+    # Grouped through `thousands` like every other figure on this page. Nothing in the
+    # portfolio reaches four digits of megabytes today, so this moves no byte -- but the
+    # rival artifact is already 590 MB, and one bake-off winner over a gigabyte would have
+    # put a comma into the page's own headline sentence and refused the build.
+    return f"{thousands(size / 1e6)} MB" if size >= 100e6 else f"{size / 1e6:.1f} MB"
 
 
 def _load(name: str, data_dir: Path) -> dict:
