@@ -39,3 +39,11 @@ Thumbs.db
 # would ship a stale mirror of the source alongside the real one.
 build/
 dist/
+
+# Claude Code, per machine. Not `.claude/` wholesale: `settings.json` is reviewable
+# configuration and belongs to whoever checks this repository out, while the paths below
+# never do. Left untracked and unignored, the first permission grant on any other checkout
+# makes `git status` report a change that is not one — a standing false finding in the one
+# instrument whose whole value is that a finding means something.
+.claude/sessions/
+.claude/settings.local.json
