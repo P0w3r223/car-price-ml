@@ -5,10 +5,6 @@
 **Used-car price prediction for the Polish market** — a model that refuses the cars it cannot
 price, rather than answering with a plausible number.
 
-> Portfolio project: the full ML cycle end to end — EDA, features, a measured model
-> bake-off, SHAP, a FastAPI service and a published page. What the project is actually
-> *about* is the paragraph below.
-
 ## The problem it is built around
 
 A price model's worst output is not a crash — it is a confident wrong number. Every bug this
